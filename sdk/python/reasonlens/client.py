@@ -80,6 +80,7 @@ class TraceContext:
         detail: str = "",
         metadata: dict[str, Any] | None = None,
         node_id: str | None = None,
+        auto_edge: bool = True,
     ) -> str:
         nid = node_id or str(uuid.uuid4())
         self.nodes.append(
@@ -91,9 +92,10 @@ class TraceContext:
                 "metadata": metadata or {},
             }
         )
-        if self._last_node_id and self._last_node_id != nid:
+        if auto_edge and self._last_node_id and self._last_node_id != nid:
             self.edge(self._last_node_id, nid, "depends_on")
-        self._last_node_id = nid
+        if auto_edge:
+            self._last_node_id = nid
         return nid
 
     def edge(
@@ -197,6 +199,7 @@ class TraceContext:
                 str(doc.get("content") or ""),
                 metadata,
                 node_id=did,
+                auto_edge=False,
             )
             self.edge(nid, did, "retrieves")
             evidence_ids.append(did)
