@@ -4,6 +4,20 @@ from dataclasses import dataclass, field
 from typing import Any
 import requests
 
+GROQ_PRICING = {
+    "openai/gpt-oss-120b": {"input": 0.15, "output": 0.60},
+    "openai/gpt-oss-20b": {"input": 0.075, "output": 0.30},
+}
+
+def estimate_groq_cost(model: str, input_tokens: int, output_tokens: int) -> float:
+    pricing = GROQ_PRICING.get(model)
+    if not pricing:
+        return 0.0
+    return (
+        (input_tokens / 1_000_000) * pricing["input"]
+        + (output_tokens / 1_000_000) * pricing["output"]
+    )
+
 @dataclass
 class TraceContext:
     client: "ReasonLens"
@@ -68,7 +82,7 @@ class TraceContext:
         latency_ms=int((time.perf_counter()-self.started)*1000)
         total_in=sum(int(n.get("metadata",{}).get("inputTokens",0)) for n in self.nodes)
         total_out=sum(int(n.get("metadata",{}).get("outputTokens",0)) for n in self.nodes)
-        trace={"id":self.id,"createdAt":self.created_at,"provider":self.provider,"model":self.model,"prompt":self.prompt,"mode":self.mode,"nodes":self.nodes,"edges":self.edges,"answer":self.answer_text,"status":status,"metrics":{"latencyMs":latency_ms,"inputTokens":total_in,"outputTokens":total_out,"estimatedCostUsd":0}}
+        trace={"id":self.id,"createdAt":self.created_at,"provider":self.provider,"model":self.model,"prompt":self.prompt,"mode":self.mode,"nodes":self.nodes,"edges":self.edges,"answer":self.answer_text,"status":status,"metrics":{"latencyMs":latency_ms,"inputTokens":total_in,"outputTokens":total_out,"estimatedCostUsd":estimate_groq_cost(self.model, total_in, total_out) if self.provider == "groq" else 0.0}}
         if self.client.ingest: self.client.send(trace)
         return trace
 
