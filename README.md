@@ -117,3 +117,15 @@ ReasonLens does not attempt to expose hidden model chain-of-thought. It displays
 ## License
 
 Apache-2.0.
+
+
+## Provenance regression demo
+
+Create two real traces—a supported baseline and a deliberately degraded RAG run:
+
+```powershell
+$env:PYTHONPATH="sdk/python"
+python sdk/python/examples/provenance_regression_demo.py
+```
+
+Then open **Trace history**, select the two newest traces with **Compare**, and inspect **RAG Regression Analysis**. ReasonLens should identify the supported → contradicted transition and the provenance score drop.
