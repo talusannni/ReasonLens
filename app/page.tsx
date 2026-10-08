@@ -22,13 +22,41 @@ export default function Home(){
  const [error,setError]=useState('');
  const [search,setSearch]=useState('');
  const [compareIds,setCompareIds]=useState<string[]>([]);
+ const [loadingHistory,setLoadingHistory]=useState(true);
+ const [connected,setConnected]=useState(false);
+ const [dashboardKey,setDashboardKey]=useState('');
 
- useEffect(()=>{try{const raw=localStorage.getItem('reasonlens-history');if(raw)setHistory(JSON.parse(raw))}catch{}},[]);
- useEffect(()=>{try{localStorage.setItem('reasonlens-history',JSON.stringify(history.slice(0,30)))}catch{}},[history]);
+ async function loadPersisted(){
+  setLoadingHistory(true);
+  try{
+   const r=await fetch('/api/dashboard/traces',{cache:'no-store'});
+   if(r.status===401){setConnected(false);return;}
+   const d=await r.json();
+   if(!r.ok)throw new Error(d.error||'Could not load traces');
+   setHistory(Array.isArray(d.traces)?d.traces:[]);
+   setConnected(true);
+  }catch(e){setError(e instanceof Error?e.message:'Could not load persisted traces');}
+  finally{setLoadingHistory(false);}
+ }
+ useEffect(()=>{loadPersisted();},[]);
 
  const visibleHistory=useMemo(()=>history.filter(t=>t.prompt.toLowerCase().includes(search.toLowerCase())||t.mode.includes(search.toLowerCase())),[history,search]);
  const compareTraces=useMemo(()=>compareIds.map(id=>history.find(t=>t.id===id)).filter(Boolean) as Trace[],[compareIds,history]);
 
+ async function connect(){
+  setError('');
+  try{
+   const r=await fetch('/api/dashboard/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:dashboardKey})});
+   const d=await r.json();
+   if(!r.ok)throw new Error(d.error||'Connection failed');
+   setDashboardKey('');
+   await loadPersisted();
+  }catch(e){setError(e instanceof Error?e.message:'Connection failed');}
+ }
+ async function disconnect(){
+  await fetch('/api/dashboard/login',{method:'DELETE'});
+  setConnected(false);setHistory([]);setTrace(null);
+ }
  async function run(){
   setBusy(true);setError('');
   try{
@@ -54,12 +82,14 @@ export default function Home(){
     <button className={view==='settings'?'active':''} onClick={()=>setView('settings')}><span>⚙</span> Settings</button>
    </nav>
    <div className="side-bottom">
-    <div className="status-dot"><i/> Demo engine online</div>
+    <div className="status-dot"><i/>{connected?'Trace store connected':'Trace store not connected'}</div>
     <label className="import-link">Import trace<input type="file" accept="application/json" onChange={importTrace}/></label>
    </div>
   </aside>
   <section className="content">
    <header className="topbar"><div><div className="eyebrow">AI OBSERVABILITY WORKSPACE</div><h2>{view==='workspace'?'Trace explorer':view==='history'?'Trace history':view==='analysis'?'Run comparison':'Configuration'}</h2></div><div className="top-actions"><span className="connection"><i/> Local-first</span>{trace&&<button className="ghost" onClick={exportTrace}>Export JSON</button>}</div></header>
+
+   {!connected&&<section className="connect-card"><div><div className="eyebrow">PERSISTED TRACE STORE</div><h3>Connect to your ReasonLens trace store</h3><p>Enter the same ReasonLens ingest key configured in Vercel. It is sent only to your ReasonLens deployment and stored as an HttpOnly session cookie.</p></div><div className="connect-row"><input type="password" value={dashboardKey} onChange={e=>setDashboardKey(e.target.value)} onKeyDown={e=>e.key==='Enter'&&connect()} placeholder="ReasonLens ingest key"/><button className="primary" onClick={connect} disabled={!dashboardKey}>Connect</button></div></section>}
 
    {view==='workspace'&&<div className="workspace">
     <section className="run-panel">
@@ -74,14 +104,14 @@ export default function Home(){
     {trace?<><div className="trace-header"><div><div className="eyebrow">TRACE {trace.id.slice(0,8)}</div><h3>{trace.mode.toUpperCase()} · {trace.model}</h3></div><div className="metrics"><span>{trace.nodes.length} nodes</span><span>{trace.edges.length} edges</span><span>{trace.metrics.latencyMs} ms</span><span>{trace.metrics.inputTokens+trace.metrics.outputTokens} tokens</span><span>${trace.metrics.estimatedCostUsd.toFixed(6)}</span></div></div><Graph trace={trace}/><section className="answer-card"><div><div className="eyebrow">OBSERVABLE RESULT</div><h3>Final answer</h3></div><p>{trace.answer}</p></section></>:<EmptyState onRun={()=>run()}/>}
    </div>}
 
-   {view==='history'&&<section className="history-page"><div className="history-tools"><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search traces…"/><span>{visibleHistory.length} traces</span></div>{visibleHistory.length===0?<EmptyState onRun={()=>setView('workspace')}/>:<div className="history-list">{visibleHistory.map(t=><div className="history-item" key={t.id}><button className="history-open" onClick={()=>load(t)}><div className="history-main"><strong>{t.prompt}</strong><small>{new Date(t.createdAt).toLocaleString()}</small></div><div className="history-meta"><b>{t.mode}</b><span>{t.nodes.length} nodes</span><span>{t.metrics.latencyMs} ms</span><span>${t.metrics.estimatedCostUsd.toFixed(6)}</span></div></button><label className="compare-check"><input type="checkbox" checked={compareIds.includes(t.id)} onChange={()=>toggleCompare(t.id)}/> Compare</label></div>)}</div>}</section>}
+   {view==='history'&&<section className="history-page"><div className="history-tools"><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search traces…"/><span>{loadingHistory?'Loading…':visibleHistory.length+' traces'}</span><div className="history-actions">{connected&&<button className="ghost" onClick={loadPersisted}>Refresh</button>}{connected&&<button className="ghost" onClick={disconnect}>Disconnect</button>}</div></div>{visibleHistory.length===0?<EmptyState onRun={()=>setView('workspace')}/>:<div className="history-list">{visibleHistory.map(t=><div className="history-item" key={t.id}><button className="history-open" onClick={()=>load(t)}><div className="history-main"><strong>{t.prompt}</strong><small>{new Date(t.createdAt).toLocaleString()}</small></div><div className="history-meta"><b>{t.mode}</b><span>{t.nodes.length} nodes</span><span>{t.metrics.latencyMs} ms</span><span>${t.metrics.estimatedCostUsd.toFixed(6)}</span></div></button><label className="compare-check"><input type="checkbox" checked={compareIds.includes(t.id)} onChange={()=>toggleCompare(t.id)}/> Compare</label></div>)}</div>}</section>}
 
    {view==='analysis'&&<section className="analysis-page">
     <div className="analysis-toolbar"><div><h3>Compare two runs</h3><p>Select two traces from history to identify latency, token and cost differences.</p></div><button className="primary" disabled={compareTraces.length!==2} onClick={()=>setView('analysis')}>{compareTraces.length===2?'Comparison ready':'Select 2 traces'}</button></div>
     {compareTraces.length===2?<Comparison a={compareTraces[0]} b={compareTraces[1]}/>:<div className="empty compact"><div className="empty-icon">↔</div><h3>Select two traces</h3><p>Open Trace history, select two Compare checkboxes, then return here.</p><button className="primary" onClick={()=>setView('history')}>Choose traces</button></div>}
    </section>}
 
-   {view==='settings'&&<section className="settings-page"><div className="settings-card"><div><h3>Provider</h3><p>ReasonLens uses Groq for real AI execution. The demo engine is available for local UI testing.</p></div><select value={provider} onChange={e=>setProvider(e.target.value)}><option value="mock">Demo engine</option><option value="groq">Groq API</option></select></div><div className="settings-card"><div><h3>Trace privacy</h3><p>History is stored in this browser only. No trace database is required.</p></div><span className="badge">LOCAL</span></div><div className="settings-card"><div><h3>Cost model</h3><p>Groq pricing is calculated from the model's reported input and output token usage.</p></div><span className="badge">LIVE</span></div><div className="settings-card"><div><h3>Model output policy</h3><p>ReasonLens visualizes structured, externally explainable artifacts. It does not request or expose private chain-of-thought.</p></div><span className="badge">SAFE</span></div></section>}
+   {view==='settings'&&<section className="settings-page"><div className="settings-card"><div><h3>Provider</h3><p>ReasonLens uses Groq for real AI execution. The demo engine is available for local UI testing.</p></div><select value={provider} onChange={e=>setProvider(e.target.value)}><option value="mock">Demo engine</option><option value="groq">Groq API</option></select></div><div className="settings-card"><div><h3>Trace persistence</h3><p>Traces are stored in Supabase and loaded into the dashboard through an authenticated server session.</p></div><span className="badge">SUPABASE</span></div><div className="settings-card"><div><h3>Cost model</h3><p>Groq pricing is calculated from the model's reported input and output token usage.</p></div><span className="badge">LIVE</span></div><div className="settings-card"><div><h3>Model output policy</h3><p>ReasonLens visualizes structured, externally explainable artifacts. It does not request or expose private chain-of-thought.</p></div><span className="badge">SAFE</span></div></section>}
   </section>
  </main>
 }
