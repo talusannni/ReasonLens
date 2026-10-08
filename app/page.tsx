@@ -25,6 +25,9 @@ export default function Home(){
  const [loadingHistory,setLoadingHistory]=useState(true);
  const [connected,setConnected]=useState(false);
  const [dashboardKey,setDashboardKey]=useState('');
+ const [sidebarCollapsed,setSidebarCollapsed]=useState(false);
+ useEffect(()=>{setSidebarCollapsed(localStorage.getItem('reasonlens-sidebar-collapsed')==='1');},[]);
+ function toggleSidebar(){setSidebarCollapsed(v=>{const next=!v;localStorage.setItem('reasonlens-sidebar-collapsed',next?'1':'0');return next;});}
 
  async function loadPersisted(){
   setLoadingHistory(true);
@@ -73,13 +76,13 @@ export default function Home(){
 
  return <main className="shell">
   <aside className="sidebar">
-   <div className="brand">Reason<span>Lens</span></div>
+   <div className="brand"><span className="brand-full">Reason<span>Lens</span></span><span className="brand-mini">R</span></div>
    <div className="tagline">See how AI reaches an answer.</div>
    <nav>
-    <button className={view==='workspace'?'active':''} onClick={()=>setView('workspace')}><span>▦</span> Workspace</button>
-    <button className={view==='history'?'active':''} onClick={()=>setView('history')}><span>◷</span> Trace history</button>
-    <button className={view==='analysis'?'active':''} onClick={()=>setView('analysis')}><span>↔</span> Run comparison</button>
-    <button className={view==='settings'?'active':''} onClick={()=>setView('settings')}><span>⚙</span> Settings</button>
+    <button title="Workspace" className={view==='workspace'?'active':''} onClick={()=>setView('workspace')}><span>▦</span><b>Workspace</b></button>
+    <button title="Trace history" className={view==='history'?'active':''} onClick={()=>setView('history')}><span>◷</span><b>Trace history</b></button>
+    <button title="Run comparison" className={view==='analysis'?'active':''} onClick={()=>setView('analysis')}><span>↔</span><b>Run comparison</b></button>
+    <button title="Settings" className={view==='settings'?'active':''} onClick={()=>setView('settings')}><span>⚙</span><b>Settings</b></button>
    </nav>
    <div className="side-bottom">
     <div className="status-dot"><i/>{connected?'Trace store connected':'Trace store not connected'}</div>
