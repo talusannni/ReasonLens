@@ -28,9 +28,7 @@ export default function Home(){
  const [sidebarCollapsed,setSidebarCollapsed]=useState(false);
  useEffect(()=>{setSidebarCollapsed(localStorage.getItem('reasonlens-sidebar-collapsed')==='1');},[]);
  function toggleSidebar(){setSidebarCollapsed(v=>{const next=!v;localStorage.setItem('reasonlens-sidebar-collapsed',next?'1':'0');return next;});}
- const [sidebarCollapsed,setSidebarCollapsed]=useState(false);
- useEffect(()=>{setSidebarCollapsed(localStorage.getItem('reasonlens-sidebar-collapsed')==='1');},[]);
- function toggleSidebar(){setSidebarCollapsed(v=>{const next=!v;localStorage.setItem('reasonlens-sidebar-collapsed',next?'1':'0');return next;});}
+
 
  async function loadPersisted(){
   setLoadingHistory(true);
