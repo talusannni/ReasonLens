@@ -12,8 +12,8 @@ export function buildScenarioTrace(prompt:string,mode:TraceMode='chat'):Trace{
  if(mode==='rag'){
   nodes.push(
    node('q','retrieval','Search query','multi-tenant SaaS PostgreSQL MongoDB transactions isolation',{stage:'retrieval'}),
-   node('doc1','evidence','PostgreSQL documentation','Transactions provide atomic commit/rollback semantics; relational constraints enforce data integrity.',{source:'demo://postgresql'}),
-   node('doc2','evidence','Multi-tenant design note','Row-level security and relational constraints are useful primitives for tenant isolation.',{source:'demo://architecture'}),
+   node('doc1','evidence','PostgreSQL documentation','Transactions provide atomic commit/rollback semantics; relational constraints enforce data integrity.',{source:'demo://postgresql',rank:1,score:0.94}),
+   node('doc2','evidence','Multi-tenant design note','Row-level security and relational constraints are useful primitives for tenant isolation.',{source:'demo://architecture',rank:2,score:0.88}),
    node('claim1','claim','Integrity is a first-class requirement','The retrieved evidence supports a relational design when consistency and constraints dominate.',{confidence:0.92}),
    node('decision','decision','Recommend PostgreSQL','The evidence aligns PostgreSQL with the stated multi-tenant transactional requirements.',{confidence:0.9}),
    node('answer','answer','Final answer','PostgreSQL is the stronger default for this scenario. MongoDB remains reasonable when flexible document modeling is the dominant requirement.')
