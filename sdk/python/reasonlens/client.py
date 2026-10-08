@@ -16,7 +16,7 @@ class TraceContext:
     nodes: list[dict[str, Any]] = field(default_factory=list)
     edges: list[dict[str, Any]] = field(default_factory=list)
     started: float = field(default_factory=time.perf_counter)
-    answer: str = ""
+    answer_text: str = ""
     status: str = "running"
 
     def __enter__(self): return self
@@ -60,7 +60,7 @@ class TraceContext:
     def decision(self,text:str)->str: return self.node("decision","Decision",text)
 
     def answer(self,text:str)->str:
-        self.answer=text
+        self.answer_text=text
         return self.node("answer","Final answer",text)
 
     def finish(self,status:str="completed")->dict[str,Any]:
@@ -68,7 +68,7 @@ class TraceContext:
         latency_ms=int((time.perf_counter()-self.started)*1000)
         total_in=sum(int(n.get("metadata",{}).get("inputTokens",0)) for n in self.nodes)
         total_out=sum(int(n.get("metadata",{}).get("outputTokens",0)) for n in self.nodes)
-        trace={"id":self.id,"createdAt":self.created_at,"provider":self.provider,"model":self.model,"prompt":self.prompt,"mode":self.mode,"nodes":self.nodes,"edges":self.edges,"answer":self.answer,"status":status,"metrics":{"latencyMs":latency_ms,"inputTokens":total_in,"outputTokens":total_out,"estimatedCostUsd":0}}
+        trace={"id":self.id,"createdAt":self.created_at,"provider":self.provider,"model":self.model,"prompt":self.prompt,"mode":self.mode,"nodes":self.nodes,"edges":self.edges,"answer":self.answer_text,"status":status,"metrics":{"latencyMs":latency_ms,"inputTokens":total_in,"outputTokens":total_out,"estimatedCostUsd":0}}
         if self.client.ingest: self.client.send(trace)
         return trace
 
