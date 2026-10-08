@@ -32,6 +32,11 @@ class TraceContext:
     started: float = field(default_factory=time.perf_counter)
     answer_text: str = ""
     status: str = "running"
+    _last_node_id: str | None = field(default=None, init=False, repr=False)
+
+    def __post_init__(self):
+        self.nodes.append({"id":"prompt","kind":"prompt","label":"User prompt","detail":self.prompt,"metadata":{}})
+        self._last_node_id = "prompt"
 
     def __enter__(self): return self
 
@@ -45,16 +50,22 @@ class TraceContext:
     def node(self, kind:str, label:str, detail:str="", metadata:dict[str,Any]|None=None, node_id:str|None=None)->str:
         nid=node_id or str(uuid.uuid4())
         self.nodes.append({"id":nid,"kind":kind,"label":label,"detail":detail,"metadata":metadata or {}})
+        if self._last_node_id and self._last_node_id != nid:
+            self.edge(self._last_node_id, nid, "depends_on")
+        self._last_node_id = nid
         return nid
 
     def edge(self, source:str, target:str, kind:str="depends_on", edge_id:str|None=None)->str:
+        for existing in self.edges:
+            if existing["source"] == source and existing["target"] == target and existing["kind"] == kind:
+                return existing["id"]
         eid=edge_id or str(uuid.uuid4())
         self.edges.append({"id":eid,"source":source,"target":target,"kind":kind})
         return eid
 
     def llm(self, model:str, input_text:str, output_text:str, input_tokens:int=0, output_tokens:int=0, provider:str="groq")->str:
         self.model=model; self.provider=provider
-        return self.node("model",f"LLM · {model}",output_text,{"inputTokens":input_tokens,"outputTokens":output_tokens})
+        return self.node("model",f"LLM · {model}",output_text,{"inputTokens":input_tokens,"outputTokens":output_tokens,"inputChars":len(input_text),"outputChars":len(output_text)})
 
     def retrieval(self, query:str, documents:list[dict[str,Any]])->str:
         nid=self.node("retrieval","Retrieval",query,{"documentCount":len(documents)})
