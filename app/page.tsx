@@ -153,50 +153,10 @@ function EvaluationPage({runs,loading,busy,selection,onRun,onToggle}:{runs:Evalu
  return <section className="evaluation-page">
   <div className="evaluation-toolbar"><div><div className="eyebrow">EVALUATION DATASET</div><h3>Core RAG Quality Suite</h3><p>Evaluate captured traces against observable provenance, contradiction, latency and cost gates.</p></div><button className="primary" onClick={onRun} disabled={busy}>{busy?'Evaluating…':'Run evaluation'}</button></div>
   {loading?<div className="empty compact"><h3>Loading evaluations…</h3></div>:!runs.length?<div className="empty compact"><div className="empty-icon">✓</div><h3>No evaluation runs yet</h3><p>Run the benchmark against the traces currently stored in ReasonLens.</p><button className="primary" onClick={onRun} disabled={busy}>{busy?'Evaluating…':'Run first evaluation'}</button></div>:<>
-   {latest&&<div className="evaluation-summary"><div><span>STATUS</span><strong className={latest.failedCases?'bad':latest.warnedCases?'warn':'good'}>{latest.failedCases?'FAIL':latest.warnedCases?'WARN':'PASS'}</strong></div><div><span>PASS RATE</span><strong>{latest.passRate}%</strong></div><div><span>PROVENANCE</span><strong>{latest.averageProvenanceScore}/100</strong></div><div><span>CASES</span><strong>{latest.evaluatedCases}/{latest.totalCases}</strong></div><div><span>LATENCY AVG</span><strong>{latest.averageLatencyMs} ms</strong></div><div><span>COST</span><strong>{'
- const rows=[
-  ['Mode',a.mode,b.mode],
-  ['Model',a.model,b.model],
-  ['Latency',a.metrics.latencyMs+' ms',b.metrics.latencyMs+' ms'],
-  ['Input tokens',a.metrics.inputTokens.toLocaleString(),b.metrics.inputTokens.toLocaleString()],
-  ['Output tokens',a.metrics.outputTokens.toLocaleString(),b.metrics.outputTokens.toLocaleString()],
-  ['Total tokens',(a.metrics.inputTokens+a.metrics.outputTokens).toLocaleString(),(b.metrics.inputTokens+b.metrics.outputTokens).toLocaleString()],
-  ['Estimated cost','$'+a.metrics.estimatedCostUsd.toFixed(6),'$'+b.metrics.estimatedCostUsd.toFixed(6)],
-  ['Nodes',String(a.nodes.length),String(b.nodes.length)],
-  ['Edges',String(a.edges.length),String(b.edges.length)],
-  ['Provenance score',analyzeProvenance(a).score+'/100',analyzeProvenance(b).score+'/100'],
-  ['Supported claims',String(analyzeProvenance(a).supportedClaims),String(analyzeProvenance(b).supportedClaims)],
-  ['Unsupported claims',String(analyzeProvenance(a).unsupportedClaims),String(analyzeProvenance(b).unsupportedClaims)],
-  ['Contradicted claims',String(analyzeProvenance(a).contradictedClaims),String(analyzeProvenance(b).contradictedClaims)]
- ];
- return <div className="comparison"><div className="comparison-head"><div><span>RUN A</span><strong>{a.prompt.slice(0,90)}</strong></div><div><span>RUN B</span><strong>{b.prompt.slice(0,90)}</strong></div></div><div className="comparison-table"><div className="comparison-row header"><b>Metric</b><b>Run A</b><b>Run B</b></div>{rows.map(r=><div className="comparison-row" key={r[0]}><span>{r[0]}</span><strong>{r[1]}</strong><strong>{r[2]}</strong></div>)}</div><ProvenanceComparison a={a} b={b}/><QualityGate a={a} b={b}/><div className="comparison-answers"><article><span>RUN A ANSWER</span><p>{a.answer}</p></article><article><span>RUN B ANSWER</span><p>{b.answer}</p></article></div></div>
-}
-
-function EmptyState({onRun}:{onRun:()=>void}){return <section className="empty"><div className="empty-icon">◈</div><h3>No trace selected</h3><p>Run a chat, RAG or agent trace to inspect how inputs, evidence, tools and decisions connect.</p><button className="primary" onClick={onRun}>Run demo trace</button></section>}
-}{latest.totalCostUsd.toFixed(6)}</strong></div></div>}
+   {latest&&<div className="evaluation-summary"><div><span>STATUS</span><strong className={latest.failedCases?'bad':latest.warnedCases?'warn':'good'}>{latest.failedCases?'FAIL':latest.warnedCases?'WARN':'PASS'}</strong></div><div><span>PASS RATE</span><strong>{latest.passRate}%</strong></div><div><span>PROVENANCE</span><strong>{latest.averageProvenanceScore}/100</strong></div><div><span>CASES</span><strong>{latest.evaluatedCases}/{latest.totalCases}</strong></div><div><span>LATENCY AVG</span><strong>{latest.averageLatencyMs} ms</strong></div><div><span>COST</span><strong>{latest.totalCostUsd.toFixed(6)} USD</strong></div></div>}
    <div className="evaluation-card"><div className="evaluation-card-head"><div><h3>Evaluation history</h3><p>Select two runs to compare benchmark quality over time.</p></div><span>{runs.length} runs</span></div><div className="evaluation-list">{runs.map(run=><div className="evaluation-item" key={run.id}><label><input type="checkbox" checked={selection.includes(run.id)} onChange={()=>onToggle(run.id)}/><div><strong>{run.name}</strong><small>{new Date(run.createdAt).toLocaleString()}</small></div></label><div className="evaluation-item-metrics"><b className={run.failedCases?'bad':run.warnedCases?'warn':'good'}>{run.failedCases?'FAIL':run.warnedCases?'WARN':'PASS'}</b><span>{run.passRate}% pass</span><span>{run.averageProvenanceScore}/100 provenance</span><span>{run.evaluatedCases}/{run.totalCases} cases</span></div></div>)}</div></div>
    {latest&&<div className="evaluation-card"><div className="evaluation-card-head"><div><h3>Latest case results</h3><p>Missing cases are not silently counted as passes.</p></div></div><div className="evaluation-cases">{latest.results.map(result=><article className={'evaluation-case '+result.status} key={result.caseId}><div><strong>{result.caseName}</strong><small>{result.traceId?result.traceId.slice(0,8):'No matching trace'}</small></div><b>{result.status.toUpperCase()}</b></article>)}</div></div>}
-   {comparison&&<div className="evaluation-card"><div className="evaluation-card-head"><div><h3>Benchmark regression</h3><p>{selected[0].name} → {selected[1].name}</p></div><strong className={comparison.regressions.length?'bad':'good'}>{comparison.regressions.length?comparison.regressions.length+' regressions':'No regressions'}</strong></div><div className="evaluation-summary compact-summary"><div><span>PASS RATE DELTA</span><strong>{comparison.passRateDelta>=0?'+':''}{comparison.passRateDelta}%</strong></div><div><span>PROVENANCE DELTA</span><strong>{comparison.provenanceDelta>=0?'+':''}{comparison.provenanceDelta}</strong></div><div><span>LATENCY DELTA</span><strong>{comparison.latencyDeltaMs>=0?'+':''}{comparison.latencyDeltaMs} ms</strong></div><div><span>COST DELTA</span><strong>{comparison.costDeltaUsd>=0?'+':''}{'
- const rows=[
-  ['Mode',a.mode,b.mode],
-  ['Model',a.model,b.model],
-  ['Latency',a.metrics.latencyMs+' ms',b.metrics.latencyMs+' ms'],
-  ['Input tokens',a.metrics.inputTokens.toLocaleString(),b.metrics.inputTokens.toLocaleString()],
-  ['Output tokens',a.metrics.outputTokens.toLocaleString(),b.metrics.outputTokens.toLocaleString()],
-  ['Total tokens',(a.metrics.inputTokens+a.metrics.outputTokens).toLocaleString(),(b.metrics.inputTokens+b.metrics.outputTokens).toLocaleString()],
-  ['Estimated cost','$'+a.metrics.estimatedCostUsd.toFixed(6),'$'+b.metrics.estimatedCostUsd.toFixed(6)],
-  ['Nodes',String(a.nodes.length),String(b.nodes.length)],
-  ['Edges',String(a.edges.length),String(b.edges.length)],
-  ['Provenance score',analyzeProvenance(a).score+'/100',analyzeProvenance(b).score+'/100'],
-  ['Supported claims',String(analyzeProvenance(a).supportedClaims),String(analyzeProvenance(b).supportedClaims)],
-  ['Unsupported claims',String(analyzeProvenance(a).unsupportedClaims),String(analyzeProvenance(b).unsupportedClaims)],
-  ['Contradicted claims',String(analyzeProvenance(a).contradictedClaims),String(analyzeProvenance(b).contradictedClaims)]
- ];
- return <div className="comparison"><div className="comparison-head"><div><span>RUN A</span><strong>{a.prompt.slice(0,90)}</strong></div><div><span>RUN B</span><strong>{b.prompt.slice(0,90)}</strong></div></div><div className="comparison-table"><div className="comparison-row header"><b>Metric</b><b>Run A</b><b>Run B</b></div>{rows.map(r=><div className="comparison-row" key={r[0]}><span>{r[0]}</span><strong>{r[1]}</strong><strong>{r[2]}</strong></div>)}</div><ProvenanceComparison a={a} b={b}/><QualityGate a={a} b={b}/><div className="comparison-answers"><article><span>RUN A ANSWER</span><p>{a.answer}</p></article><article><span>RUN B ANSWER</span><p>{b.answer}</p></article></div></div>
-}
-
-function EmptyState({onRun}:{onRun:()=>void}){return <section className="empty"><div className="empty-icon">◈</div><h3>No trace selected</h3><p>Run a chat, RAG or agent trace to inspect how inputs, evidence, tools and decisions connect.</p><button className="primary" onClick={onRun}>Run demo trace</button></section>}
-}{comparison.costDeltaUsd.toFixed(6)}</strong></div></div>{comparison.regressions.length>0&&<div className="evaluation-regressions">{comparison.regressions.map(r=><div key={r.caseId}><b>REGRESSION</b><span>{r.caseName}</span><small>Quality gate status degraded.</small></div>)}</div>}</div>}
+   {comparison&&<div className="evaluation-card"><div className="evaluation-card-head"><div><h3>Benchmark regression</h3><p>{selected[0].name} → {selected[1].name}</p></div><strong className={comparison.regressions.length?'bad':'good'}>{comparison.regressions.length?comparison.regressions.length+' regressions':'No regressions'}</strong></div><div className="evaluation-summary compact-summary"><div><span>PASS RATE DELTA</span><strong>{comparison.passRateDelta>=0?'+':''}{comparison.passRateDelta}%</strong></div><div><span>PROVENANCE DELTA</span><strong>{comparison.provenanceDelta>=0?'+':''}{comparison.provenanceDelta}</strong></div><div><span>LATENCY DELTA</span><strong>{comparison.latencyDeltaMs>=0?'+':''}{comparison.latencyDeltaMs} ms</strong></div><div><span>COST DELTA</span><strong>{comparison.costDeltaUsd>=0?'+':''}{comparison.costDeltaUsd.toFixed(6)} USD</strong></div></div>{comparison.regressions.length>0&&<div className="evaluation-regressions">{comparison.regressions.map(item=><div key={item.caseId}><b>REGRESSION</b><span>{item.caseName}</span><small>Quality gate status degraded.</small></div>)}</div>}</div>}
   </>}
  </section>
 }
