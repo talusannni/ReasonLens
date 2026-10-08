@@ -46,3 +46,28 @@
 .sidebar-collapsed .tagline,.sidebar-collapsed .sidebar nav button b,.sidebar-collapsed .side-bottom .status-dot,.sidebar-collapsed .import-link{display:none}
 .sidebar-collapsed .sidebar nav button{justify-content:center;padding:11px 8px}
 .sidebar-collapsed .sidebar nav button span{width:auto}
+
+.inspector{overflow-y:auto;max-height:480px}
+.inspector-title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:12px}
+.inspector-title-row h3{margin:0;font-size:17px;line-height:1.25}
+.inspector-section{border-top:1px solid #eef2f7;padding-top:12px;margin-top:12px}
+.inspector-section-title{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#64748b;margin-bottom:8px}
+.inspector-detail{font-size:12px;line-height:1.55;color:#334155;white-space:pre-wrap;overflow-wrap:anywhere}
+.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.metric-grid>div{background:#f8fafc;border:1px solid #eef2f7;border-radius:8px;padding:8px}
+.metric-grid span{display:block;font-size:9px;color:#64748b;margin-bottom:3px}
+.metric-grid strong{display:block;font-size:11px;color:#0f172a;overflow-wrap:anywhere}
+.confidence{display:flex;align-items:baseline;gap:7px}
+.confidence strong{font-size:22px;color:#b45309}
+.confidence span{font-size:10px;color:#64748b}
+.relationship-list{display:flex;flex-direction:column;gap:5px}
+.relationship{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;text-align:left;padding:8px 9px;border:1px solid #e2e8f0;background:#fff;border-radius:7px;cursor:pointer}
+.relationship:hover{background:#f8fafc;border-color:#bfdbfe}
+.relationship span{font-size:9px;color:#64748b}
+.relationship strong{font-size:11px;color:#334155;font-weight:600}
+.inspector dl{margin:0}
+.inspector dl>div{display:grid;grid-template-columns:minmax(70px,.45fr) 1fr;gap:8px;padding:5px 0;border-bottom:1px solid #f1f5f9}
+.inspector dt{font-size:9px;color:#64748b;overflow-wrap:anywhere}
+.inspector dd{margin:0;font-size:10px;color:#334155;overflow-wrap:anywhere;white-space:pre-wrap}
+.inspector-trace-metrics{padding-bottom:4px}
+.muted{font-size:10px;color:#94a3b8}
