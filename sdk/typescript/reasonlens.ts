@@ -19,9 +19,9 @@ export class TraceContext{
    this.nodes.push({id:'prompt',kind:'prompt',label:'User prompt',detail:prompt,metadata:{mode}});
    this.lastNodeId='prompt';
  }
- node(kind:NodeKind,label:string,detail='',metadata:Record<string,unknown>={},nodeId?:string):string{
+ node(kind:NodeKind,label:string,detail='',metadata:Record<string,unknown>={},nodeId?:string,autoEdge=true):string{
    const id=nodeId||crypto.randomUUID();this.nodes.push({id,kind,label,detail,metadata});
-   if(this.lastNodeId)this.edge(this.lastNodeId,id,'depends_on');this.lastNodeId=id;return id;
+   if(autoEdge&&this.lastNodeId)this.edge(this.lastNodeId,id,'depends_on');if(autoEdge)this.lastNodeId=id;return id;
  }
  edge(source:string,target:string,kind='depends_on'):string{
    const existing=this.edges.find(e=>e.source===source&&e.target===target&&e.kind===kind);
@@ -44,7 +44,7 @@ export class TraceContext{
    const evidenceIds:string[]=[];
    for(const [index,d] of documents.entries()){
      const did=d.id||d.title||'evidence-'+(index+1);
-     this.node('evidence',d.title||d.id||'Evidence',d.content||'',{rank:index+1,...(d.metadata||{})},did);
+     this.node('evidence',d.title||d.id||'Evidence',d.content||'',{rank:index+1,...(d.metadata||{})},did,false);
      this.edge(id,did,'retrieves');evidenceIds.push(did);
    }
    const retrievalNode=this.nodes.find(n=>n.id===id);if(retrievalNode)retrievalNode.metadata={...retrievalNode.metadata,evidenceIds};
