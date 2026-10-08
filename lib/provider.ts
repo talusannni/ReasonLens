@@ -1,5 +1,6 @@
 import { buildScenarioTrace } from './scenarios';
 import type { Trace, TraceMode } from './types';
+import { estimateGroqCost } from './pricing';
 
 export async function runTrace(
   prompt: string,
@@ -66,7 +67,7 @@ export async function runTrace(
       latencyMs: Date.now() - started,
       inputTokens: data.usage?.prompt_tokens || 0,
       outputTokens: data.usage?.completion_tokens || 0,
-      estimatedCostUsd: 0
+      estimatedCostUsd: estimateGroqCost(model, data.usage?.prompt_tokens || 0, data.usage?.completion_tokens || 0)
     }
   };
 }
