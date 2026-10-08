@@ -5,6 +5,7 @@ export interface EvaluationCase {
  id:string;
  name:string;
  prompt:string;
+ traceId?:string;
  description?:string;
  tags?:string[];
 }
@@ -27,6 +28,7 @@ export interface EvaluationComparison {
 }
 const normalize=(value:string)=>value.toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ');
 export function matchTrace(testCase:EvaluationCase,traces:Trace[]):Trace|null {
+ if(testCase.traceId){return traces.find(t=>t.id===testCase.traceId) ?? null;}
  const wanted=normalize(testCase.prompt);
  return traces.find(t=>normalize(t.prompt)===wanted) ?? null;
 }
