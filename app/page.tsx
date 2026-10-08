@@ -6,6 +6,7 @@ import Provenance from '../components/Provenance';
 import ProvenanceComparison from '../components/ProvenanceComparison';
 import QualityGate from '../components/QualityGate';
 import {analyzeProvenance} from '../lib/provenance';
+import {compareEvaluationRuns,type EvaluationRun} from '../lib/evaluation';
 import type {Trace,TraceMode} from '../lib/types';
 
 const starter='Should I use PostgreSQL or MongoDB for a multi-tenant SaaS application?';
@@ -21,7 +22,7 @@ export default function Home(){
  const [provider,setProvider]=useState('mock');
  const [trace,setTrace]=useState<Trace|null>(null);
  const [history,setHistory]=useState<Trace[]>([]);
- const [view,setView]=useState<'workspace'|'history'|'analysis'|'settings'>('workspace');
+ const [view,setView]=useState<'workspace'|'history'|'analysis'|'evaluations'|'settings'>('workspace');
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState('');
  const [search,setSearch]=useState('');
@@ -30,6 +31,10 @@ export default function Home(){
  const [connected,setConnected]=useState(false);
  const [dashboardKey,setDashboardKey]=useState('');
  const [sidebarCollapsed,setSidebarCollapsed]=useState(false);
+ const [evaluationRuns,setEvaluationRuns]=useState<EvaluationRun[]>([]);
+ const [evaluationLoading,setEvaluationLoading]=useState(false);
+ const [evaluationBusy,setEvaluationBusy]=useState(false);
+ const [evaluationSelection,setEvaluationSelection]=useState<string[]>([]);
  useEffect(()=>{setSidebarCollapsed(localStorage.getItem('reasonlens-sidebar-collapsed')==='1');},[]);
  function toggleSidebar(){setSidebarCollapsed(v=>{const next=!v;localStorage.setItem('reasonlens-sidebar-collapsed',next?'1':'0');return next;});}
 
@@ -51,6 +56,18 @@ export default function Home(){
  const visibleHistory=useMemo(()=>history.filter(t=>t.prompt.toLowerCase().includes(search.toLowerCase())||t.mode.includes(search.toLowerCase())),[history,search]);
  const compareTraces=useMemo(()=>compareIds.map(id=>history.find(t=>t.id===id)).filter(Boolean) as Trace[],[compareIds,history]);
 
+ async function loadEvaluations(){
+  if(!connected)return; setEvaluationLoading(true);
+  try{const r=await fetch('/api/evaluations',{cache:'no-store'});if(r.status===401)return;const d=await r.json();if(r.ok)setEvaluationRuns(Array.isArray(d.runs)?d.runs:[]);}
+  catch(e){setError(e instanceof Error?e.message:'Could not load evaluations');}finally{setEvaluationLoading(false);}
+ }
+ async function runEvaluation(){
+  setEvaluationBusy(true);setError('');
+  try{const r=await fetch('/api/evaluations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:'Core RAG Quality Suite'})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Evaluation failed');setEvaluationRuns(rs=>[d.run,...rs.filter(x=>x.id!==d.run.id)]);setView('evaluations');}
+  catch(e){setError(e instanceof Error?e.message:'Evaluation failed');}finally{setEvaluationBusy(false);}
+ }
+ function toggleEvaluation(id:string){setEvaluationSelection(ids=>ids.includes(id)?ids.filter(x=>x!==id):ids.length<2?[...ids,id]:[ids[1],id]);}
+ useEffect(()=>{if(connected)loadEvaluations();},[connected]);
  async function connect(){
   setError('');
   try{
@@ -59,11 +76,13 @@ export default function Home(){
    if(!r.ok)throw new Error(d.error||'Connection failed');
    setDashboardKey('');
    await loadPersisted();
+   setConnected(true);
+   await loadEvaluations();
   }catch(e){setError(e instanceof Error?e.message:'Connection failed');}
  }
  async function disconnect(){
   await fetch('/api/dashboard/login',{method:'DELETE'});
-  setConnected(false);setHistory([]);setTrace(null);
+  setConnected(false);setHistory([]);setTrace(null);setEvaluationRuns([]);setEvaluationSelection([]);
  }
  async function run(){
   setBusy(true);setError('');
@@ -87,6 +106,7 @@ export default function Home(){
     <button title="Workspace" className={view==='workspace'?'active':''} onClick={()=>setView('workspace')}><span>▦</span><b>Workspace</b></button>
     <button title="Trace history" className={view==='history'?'active':''} onClick={()=>setView('history')}><span>◷</span><b>Trace history</b></button>
     <button title="Run comparison" className={view==='analysis'?'active':''} onClick={()=>setView('analysis')}><span>↔</span><b>Run comparison</b></button>
+    <button title="Evaluations" className={view==='evaluations'?'active':''} onClick={()=>setView('evaluations')}><span>✓</span><b>Evaluations</b></button>
     <button title="Settings" className={view==='settings'?'active':''} onClick={()=>setView('settings')}><span>⚙</span><b>Settings</b></button>
    </nav>
    <div className="side-bottom">
@@ -95,7 +115,7 @@ export default function Home(){
    </div>
   </aside>
   <section className="content">
-   <header className="topbar"><div><div className="eyebrow">AI OBSERVABILITY WORKSPACE</div><h2>{view==='workspace'?'Trace explorer':view==='history'?'Trace history':view==='analysis'?'Run comparison':'Configuration'}</h2></div><div className="top-actions"><span className="connection"><i/> Local-first</span>{trace&&<button className="ghost" onClick={exportTrace}>Export JSON</button>}</div></header>
+   <header className="topbar"><div><div className="eyebrow">AI OBSERVABILITY WORKSPACE</div><h2>{view==='workspace'?'Trace explorer':view==='history'?'Trace history':view==='analysis'?'Run comparison':view==='evaluations'?'Evaluations':'Configuration'}</h2></div><div className="top-actions"><span className="connection"><i/> Local-first</span>{trace&&<button className="ghost" onClick={exportTrace}>Export JSON</button>}</div></header>
 
    {!connected&&<section className="connect-card"><div><div className="eyebrow">PERSISTED TRACE STORE</div><h3>Connect to your ReasonLens trace store</h3><p>Enter the same ReasonLens ingest key configured in Vercel. It is sent only to your ReasonLens deployment and stored as an HttpOnly session cookie.</p></div><div className="connect-row"><input type="password" value={dashboardKey} onChange={e=>setDashboardKey(e.target.value)} onKeyDown={e=>e.key==='Enter'&&connect()} placeholder="ReasonLens ingest key"/><button className="primary" onClick={connect} disabled={!dashboardKey}>Connect</button></div></section>}
 
@@ -119,9 +139,66 @@ export default function Home(){
     {compareTraces.length===2?<Comparison a={compareTraces[0]} b={compareTraces[1]}/>:<div className="empty compact"><div className="empty-icon">↔</div><h3>Select two traces</h3><p>Open Trace history, select two Compare checkboxes, then return here.</p><button className="primary" onClick={()=>setView('history')}>Choose traces</button></div>}
    </section>}
 
+   {view==='evaluations'&&<EvaluationPage runs={evaluationRuns} loading={evaluationLoading} busy={evaluationBusy} selection={evaluationSelection} onRun={runEvaluation} onToggle={toggleEvaluation}/>}
+
    {view==='settings'&&<section className="settings-page"><div className="settings-card"><div><h3>Provider</h3><p>ReasonLens uses Groq for real AI execution. The demo engine is available for local UI testing.</p></div><select value={provider} onChange={e=>setProvider(e.target.value)}><option value="mock">Demo engine</option><option value="groq">Groq API</option></select></div><div className="settings-card"><div><h3>Trace persistence</h3><p>Traces are stored in Supabase and loaded into the dashboard through an authenticated server session.</p></div><span className="badge">SUPABASE</span></div><div className="settings-card"><div><h3>Cost model</h3><p>Groq pricing is calculated from the model's reported input and output token usage.</p></div><span className="badge">LIVE</span></div><div className="settings-card"><div><h3>Model output policy</h3><p>ReasonLens visualizes structured, externally explainable artifacts. It does not request or expose private chain-of-thought.</p></div><span className="badge">SAFE</span></div></section>}
   </section>
  </main>
+}
+
+function EvaluationPage({runs,loading,busy,selection,onRun,onToggle}:{runs:EvaluationRun[];loading:boolean;busy:boolean;selection:string[];onRun:()=>void;onToggle:(id:string)=>void}){
+ const selected=selection.map(id=>runs.find(r=>r.id===id)).filter(Boolean) as EvaluationRun[];
+ const latest=runs[0];
+ const comparison=selected.length===2?compareEvaluationRuns(selected[0],selected[1]):null;
+ return <section className="evaluation-page">
+  <div className="evaluation-toolbar"><div><div className="eyebrow">EVALUATION DATASET</div><h3>Core RAG Quality Suite</h3><p>Evaluate captured traces against observable provenance, contradiction, latency and cost gates.</p></div><button className="primary" onClick={onRun} disabled={busy}>{busy?'Evaluating…':'Run evaluation'}</button></div>
+  {loading?<div className="empty compact"><h3>Loading evaluations…</h3></div>:!runs.length?<div className="empty compact"><div className="empty-icon">✓</div><h3>No evaluation runs yet</h3><p>Run the benchmark against the traces currently stored in ReasonLens.</p><button className="primary" onClick={onRun} disabled={busy}>{busy?'Evaluating…':'Run first evaluation'}</button></div>:<>
+   {latest&&<div className="evaluation-summary"><div><span>STATUS</span><strong className={latest.failedCases?'bad':latest.warnedCases?'warn':'good'}>{latest.failedCases?'FAIL':latest.warnedCases?'WARN':'PASS'}</strong></div><div><span>PASS RATE</span><strong>{latest.passRate}%</strong></div><div><span>PROVENANCE</span><strong>{latest.averageProvenanceScore}/100</strong></div><div><span>CASES</span><strong>{latest.evaluatedCases}/{latest.totalCases}</strong></div><div><span>LATENCY AVG</span><strong>{latest.averageLatencyMs} ms</strong></div><div><span>COST</span><strong>{'
+ const rows=[
+  ['Mode',a.mode,b.mode],
+  ['Model',a.model,b.model],
+  ['Latency',a.metrics.latencyMs+' ms',b.metrics.latencyMs+' ms'],
+  ['Input tokens',a.metrics.inputTokens.toLocaleString(),b.metrics.inputTokens.toLocaleString()],
+  ['Output tokens',a.metrics.outputTokens.toLocaleString(),b.metrics.outputTokens.toLocaleString()],
+  ['Total tokens',(a.metrics.inputTokens+a.metrics.outputTokens).toLocaleString(),(b.metrics.inputTokens+b.metrics.outputTokens).toLocaleString()],
+  ['Estimated cost','$'+a.metrics.estimatedCostUsd.toFixed(6),'$'+b.metrics.estimatedCostUsd.toFixed(6)],
+  ['Nodes',String(a.nodes.length),String(b.nodes.length)],
+  ['Edges',String(a.edges.length),String(b.edges.length)],
+  ['Provenance score',analyzeProvenance(a).score+'/100',analyzeProvenance(b).score+'/100'],
+  ['Supported claims',String(analyzeProvenance(a).supportedClaims),String(analyzeProvenance(b).supportedClaims)],
+  ['Unsupported claims',String(analyzeProvenance(a).unsupportedClaims),String(analyzeProvenance(b).unsupportedClaims)],
+  ['Contradicted claims',String(analyzeProvenance(a).contradictedClaims),String(analyzeProvenance(b).contradictedClaims)]
+ ];
+ return <div className="comparison"><div className="comparison-head"><div><span>RUN A</span><strong>{a.prompt.slice(0,90)}</strong></div><div><span>RUN B</span><strong>{b.prompt.slice(0,90)}</strong></div></div><div className="comparison-table"><div className="comparison-row header"><b>Metric</b><b>Run A</b><b>Run B</b></div>{rows.map(r=><div className="comparison-row" key={r[0]}><span>{r[0]}</span><strong>{r[1]}</strong><strong>{r[2]}</strong></div>)}</div><ProvenanceComparison a={a} b={b}/><QualityGate a={a} b={b}/><div className="comparison-answers"><article><span>RUN A ANSWER</span><p>{a.answer}</p></article><article><span>RUN B ANSWER</span><p>{b.answer}</p></article></div></div>
+}
+
+function EmptyState({onRun}:{onRun:()=>void}){return <section className="empty"><div className="empty-icon">◈</div><h3>No trace selected</h3><p>Run a chat, RAG or agent trace to inspect how inputs, evidence, tools and decisions connect.</p><button className="primary" onClick={onRun}>Run demo trace</button></section>}
+}{latest.totalCostUsd.toFixed(6)}</strong></div></div>}
+   <div className="evaluation-card"><div className="evaluation-card-head"><div><h3>Evaluation history</h3><p>Select two runs to compare benchmark quality over time.</p></div><span>{runs.length} runs</span></div><div className="evaluation-list">{runs.map(run=><div className="evaluation-item" key={run.id}><label><input type="checkbox" checked={selection.includes(run.id)} onChange={()=>onToggle(run.id)}/><div><strong>{run.name}</strong><small>{new Date(run.createdAt).toLocaleString()}</small></div></label><div className="evaluation-item-metrics"><b className={run.failedCases?'bad':run.warnedCases?'warn':'good'}>{run.failedCases?'FAIL':run.warnedCases?'WARN':'PASS'}</b><span>{run.passRate}% pass</span><span>{run.averageProvenanceScore}/100 provenance</span><span>{run.evaluatedCases}/{run.totalCases} cases</span></div></div>)}</div></div>
+   {latest&&<div className="evaluation-card"><div className="evaluation-card-head"><div><h3>Latest case results</h3><p>Missing cases are not silently counted as passes.</p></div></div><div className="evaluation-cases">{latest.results.map(result=><article className={'evaluation-case '+result.status} key={result.caseId}><div><strong>{result.caseName}</strong><small>{result.traceId?result.traceId.slice(0,8):'No matching trace'}</small></div><b>{result.status.toUpperCase()}</b></article>)}</div></div>}
+   {comparison&&<div className="evaluation-card"><div className="evaluation-card-head"><div><h3>Benchmark regression</h3><p>{selected[0].name} → {selected[1].name}</p></div><strong className={comparison.regressions.length?'bad':'good'}>{comparison.regressions.length?comparison.regressions.length+' regressions':'No regressions'}</strong></div><div className="evaluation-summary compact-summary"><div><span>PASS RATE DELTA</span><strong>{comparison.passRateDelta>=0?'+':''}{comparison.passRateDelta}%</strong></div><div><span>PROVENANCE DELTA</span><strong>{comparison.provenanceDelta>=0?'+':''}{comparison.provenanceDelta}</strong></div><div><span>LATENCY DELTA</span><strong>{comparison.latencyDeltaMs>=0?'+':''}{comparison.latencyDeltaMs} ms</strong></div><div><span>COST DELTA</span><strong>{comparison.costDeltaUsd>=0?'+':''}{'
+ const rows=[
+  ['Mode',a.mode,b.mode],
+  ['Model',a.model,b.model],
+  ['Latency',a.metrics.latencyMs+' ms',b.metrics.latencyMs+' ms'],
+  ['Input tokens',a.metrics.inputTokens.toLocaleString(),b.metrics.inputTokens.toLocaleString()],
+  ['Output tokens',a.metrics.outputTokens.toLocaleString(),b.metrics.outputTokens.toLocaleString()],
+  ['Total tokens',(a.metrics.inputTokens+a.metrics.outputTokens).toLocaleString(),(b.metrics.inputTokens+b.metrics.outputTokens).toLocaleString()],
+  ['Estimated cost','$'+a.metrics.estimatedCostUsd.toFixed(6),'$'+b.metrics.estimatedCostUsd.toFixed(6)],
+  ['Nodes',String(a.nodes.length),String(b.nodes.length)],
+  ['Edges',String(a.edges.length),String(b.edges.length)],
+  ['Provenance score',analyzeProvenance(a).score+'/100',analyzeProvenance(b).score+'/100'],
+  ['Supported claims',String(analyzeProvenance(a).supportedClaims),String(analyzeProvenance(b).supportedClaims)],
+  ['Unsupported claims',String(analyzeProvenance(a).unsupportedClaims),String(analyzeProvenance(b).unsupportedClaims)],
+  ['Contradicted claims',String(analyzeProvenance(a).contradictedClaims),String(analyzeProvenance(b).contradictedClaims)]
+ ];
+ return <div className="comparison"><div className="comparison-head"><div><span>RUN A</span><strong>{a.prompt.slice(0,90)}</strong></div><div><span>RUN B</span><strong>{b.prompt.slice(0,90)}</strong></div></div><div className="comparison-table"><div className="comparison-row header"><b>Metric</b><b>Run A</b><b>Run B</b></div>{rows.map(r=><div className="comparison-row" key={r[0]}><span>{r[0]}</span><strong>{r[1]}</strong><strong>{r[2]}</strong></div>)}</div><ProvenanceComparison a={a} b={b}/><QualityGate a={a} b={b}/><div className="comparison-answers"><article><span>RUN A ANSWER</span><p>{a.answer}</p></article><article><span>RUN B ANSWER</span><p>{b.answer}</p></article></div></div>
+}
+
+function EmptyState({onRun}:{onRun:()=>void}){return <section className="empty"><div className="empty-icon">◈</div><h3>No trace selected</h3><p>Run a chat, RAG or agent trace to inspect how inputs, evidence, tools and decisions connect.</p><button className="primary" onClick={onRun}>Run demo trace</button></section>}
+}{comparison.costDeltaUsd.toFixed(6)}</strong></div></div>{comparison.regressions.length>0&&<div className="evaluation-regressions">{comparison.regressions.map(r=><div key={r.caseId}><b>REGRESSION</b><span>{r.caseName}</span><small>Quality gate status degraded.</small></div>)}</div>}</div>}
+  </>}
+ </section>
 }
 
 function Comparison({a,b}:{a:Trace;b:Trace}){
