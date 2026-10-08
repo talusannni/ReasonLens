@@ -17,13 +17,15 @@ class TraceContext:
     edges: list[dict[str, Any]] = field(default_factory=list)
     started: float = field(default_factory=time.perf_counter)
     answer: str = ""
+    status: str = "running"
 
-    def __enter__(self):
-        return self
+    def __enter__(self): return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        if exc_type is None:
-            self.finish()
+        if exc_type is None: self.finish()
+        else:
+            self.node("warning", "Unhandled exception", str(exc_value or exc_type))
+            self.finish("failed")
         return False
 
     def node(self, kind:str, label:str, detail:str="", metadata:dict[str,Any]|None=None, node_id:str|None=None)->str:
@@ -38,8 +40,7 @@ class TraceContext:
 
     def llm(self, model:str, input_text:str, output_text:str, input_tokens:int=0, output_tokens:int=0, provider:str="groq")->str:
         self.model=model; self.provider=provider
-        nid=self.node("model",f"LLM · {model}",output_text,{"inputTokens":input_tokens,"outputTokens":output_tokens})
-        return nid
+        return self.node("model",f"LLM · {model}",output_text,{"inputTokens":input_tokens,"outputTokens":output_tokens})
 
     def retrieval(self, query:str, documents:list[dict[str,Any]])->str:
         nid=self.node("retrieval","Retrieval",query,{"documentCount":len(documents)})
@@ -56,20 +57,19 @@ class TraceContext:
         for source in supported_by or []: self.edge(source,nid,"supports")
         return nid
 
-    def decision(self,text:str)->str:
-        return self.node("decision","Decision",text)
+    def decision(self,text:str)->str: return self.node("decision","Decision",text)
 
     def answer(self,text:str)->str:
         self.answer=text
         return self.node("answer","Final answer",text)
 
-    def finish(self)->dict[str,Any]:
+    def finish(self,status:str="completed")->dict[str,Any]:
+        self.status=status
         latency_ms=int((time.perf_counter()-self.started)*1000)
         total_in=sum(int(n.get("metadata",{}).get("inputTokens",0)) for n in self.nodes)
         total_out=sum(int(n.get("metadata",{}).get("outputTokens",0)) for n in self.nodes)
-        trace={"id":self.id,"createdAt":self.created_at,"provider":self.provider,"model":self.model,"prompt":self.prompt,"mode":self.mode,"nodes":self.nodes,"edges":self.edges,"answer":self.answer,"status":"completed","metrics":{"latencyMs":latency_ms,"inputTokens":total_in,"outputTokens":total_out,"estimatedCostUsd":0}}
-        if self.client.ingest:
-            self.client.send(trace)
+        trace={"id":self.id,"createdAt":self.created_at,"provider":self.provider,"model":self.model,"prompt":self.prompt,"mode":self.mode,"nodes":self.nodes,"edges":self.edges,"answer":self.answer,"status":status,"metrics":{"latencyMs":latency_ms,"inputTokens":total_in,"outputTokens":total_out,"estimatedCostUsd":0}}
+        if self.client.ingest: self.client.send(trace)
         return trace
 
 class ReasonLens:
@@ -79,8 +79,7 @@ class ReasonLens:
         self.ingest=ingest
         self.timeout=timeout
 
-    def trace(self,prompt:str,mode:str="chat")->TraceContext:
-        return TraceContext(self,prompt,mode)
+    def trace(self,prompt:str,mode:str="chat")->TraceContext: return TraceContext(self,prompt,mode)
 
     def send(self,trace:dict[str,Any])->None:
         headers={"Content-Type":"application/json"}
