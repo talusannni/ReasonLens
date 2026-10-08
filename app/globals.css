@@ -116,3 +116,6 @@
 .evaluation-regressions{display:grid;gap:6px;margin-top:12px}.evaluation-regressions>div{display:grid;grid-template-columns:100px 1fr auto;gap:10px;align-items:center;border:1px solid #fecaca;background:#fffafa;border-radius:8px;padding:9px 11px}.evaluation-regressions b{font-size:9px;color:#b91c1c}.evaluation-regressions span{font-size:11px;font-weight:700}.evaluation-regressions small{font-size:10px;color:#64748b}
 @media(max-width:900px){.evaluation-summary{grid-template-columns:repeat(3,1fr)}.evaluation-item{align-items:flex-start;flex-direction:column}.evaluation-item-metrics{padding-left:26px}.evaluation-regressions>div{grid-template-columns:1fr}}
 @media(max-width:600px){.evaluation-toolbar{flex-direction:column}.evaluation-toolbar .primary{width:100%}.evaluation-summary{grid-template-columns:repeat(2,1fr)}.compact-summary{grid-template-columns:1fr 1fr}}
+
+.evaluation-toolbar-actions{display:flex;gap:8px;align-items:center}.evaluation-import{position:relative;overflow:hidden;display:inline-flex;align-items:center;cursor:pointer}.evaluation-import input{position:absolute;inset:0;opacity:0;cursor:pointer}
+@media(max-width:600px){.evaluation-toolbar-actions{width:100%}.evaluation-toolbar-actions>*{flex:1;text-align:center}.evaluation-import{justify-content:center}}
