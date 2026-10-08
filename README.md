@@ -33,12 +33,12 @@ Open http://localhost:3000.
 For the demo engine, no API key is required. For Groq configure:
 
 ```env
-REASONLENS_PROVIDER=openai
+REASONLENS_PROVIDER=groq
 REASONLENS_MODEL=<your-model>
 GROQ_API_KEY=<your-key>
 ```
 
-Ollama can use `
+
 ## Architecture
 
 ```text
