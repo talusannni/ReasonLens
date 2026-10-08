@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test:provenance": "npx --yes tsx scripts/test-provenance-regression.ts"
+    "test:provenance": "npx --yes tsx scripts/test-provenance-regression.ts",
+    "test:quality-gates": "npx --yes tsx scripts/test-quality-gates.ts"
   },
   "dependencies": {
     "next": "15.5.27",
