@@ -113,7 +113,7 @@ export default function Graph({trace}:{trace:Trace}){
     })}
     {filtered.nodes.map(n=>{
      const p=positions[n.id],active=selected.id===n.id,related=connectedIds.has(n.id);
-     return <g key={n.id} transform={'translate('+p.x+','+p.y+')'} onClick={()=>selectNode(n)} className="node" opacity={selected&&!related?.45:1}>
+     return <g key={n.id} transform={'translate('+p.x+','+p.y+')'} onClick={()=>selectNode(n)} className="node" opacity={selected && !related ? 0.45 : 1}>
       <rect width="170" height="62" rx="12" fill="white" stroke={active?colors[n.kind]:related?colors[n.kind]:'#cbd5e1'} strokeWidth={active?3:related?2:1.5}/>
       <rect width="6" height="62" rx="3" fill={colors[n.kind]||'#64748b'}/>
       <text x="18" y="24" className="node-kind">{n.kind}</text>
