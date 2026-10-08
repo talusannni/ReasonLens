@@ -22,7 +22,7 @@ export default function Graph({trace}:{trace:Trace}){
   if(view==='all')return visible;
   const nodeMap=new Map(trace.nodes.map(n=>[n.id,n]));
   if(view==='evidence'){
-   const ids=new Set(trace.nodes.filter(n=>n.kind==='retrieval'||n.kind==='evidence'||n.kind==='claim'||n.kind==='prompt'||n.kind==='answer').map(n=>n.id));
+   const ids=new Set(trace.nodes.filter(n=>n.kind==='retrieval'||n.kind==='evidence'||n.kind==='claim'||n.kind==='decision'||n.kind==='prompt'||n.kind==='answer').map(n=>n.id));
    const edges=trace.edges.filter(e=>ids.has(e.source)&&ids.has(e.target));
    return {nodes:trace.nodes.filter(n=>ids.has(n.id)),edges};
   }
