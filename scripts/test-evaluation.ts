@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {compareEvaluationRuns,evaluateDataset,type EvaluationCase} from '../lib/evaluation';
+import {compareEvaluationRuns,evaluateDataset,matchTrace,type EvaluationCase} from '../lib/evaluation';
 import type {GraphEdge,Trace} from '../lib/types';
 
 const trace=(id:string,prompt:string,contradicted=false):Trace=>({
@@ -9,6 +9,9 @@ const trace=(id:string,prompt:string,contradicted=false):Trace=>({
  edges:([{id:'s',source:'e',target:'c',kind:'supports'},{id:'ca',source:'c',target:'a',kind:'answers'}] as GraphEdge[]).concat(contradicted?[{id:'x',source:'e',target:'c',kind:'contradicts'}]:[])
 });
 const cases:EvaluationCase[]=[{id:'one',name:'One',prompt:'Question one'},{id:'two',name:'Two',prompt:'Question two'},{id:'three',name:'Three',prompt:'Question three'}];
+const duplicateA=trace('baseline-id','Question one');
+const duplicateB=trace('degraded-id','Question one',true);
+assert.equal(matchTrace({id:'pinned',name:'Pinned',prompt:'Question one',traceId:'baseline-id'},[duplicateB,duplicateA])?.id,'baseline-id');
 const baseline=evaluateDataset('Baseline',cases,[trace('1','Question one'),trace('2','Question two')]);
 assert.equal(baseline.evaluatedCases,2); assert.equal(baseline.missingCases,1); assert.equal(baseline.passedCases,2); assert.equal(baseline.passRate,66.7);
 const current=evaluateDataset('Current',cases,[trace('1','Question one'),trace('2','Question two',true)]);
