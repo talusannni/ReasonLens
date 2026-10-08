@@ -18,6 +18,7 @@ jobs:
       - run: python -m pip install --upgrade pip
       - run: pip install -r sdk/python/requirements.txt
       - run: PYTHONPATH=sdk/python python -m unittest discover sdk/python/tests -v
+      - run: python -m py_compile sdk/python/examples/real_application.py sdk/python/examples/document_rag.py sdk/python/examples/generate_document_fixtures.py sdk/python/examples/provenance_edge_cases.py
 
       - uses: actions/setup-node@v4
         with:
