@@ -50,3 +50,14 @@ REASONLENS_URL=https://reasonlens.vercel.app
 REASONLENS_INGEST_KEY=<your ReasonLens ingest key>
 GROQ_MODEL=openai/gpt-oss-120b
 ```
+
+
+## Provenance edge-case test
+
+Generate a trace containing supported, contradicted, and unsupported claims:
+
+```bash
+PYTHONPATH=sdk/python python sdk/python/examples/provenance_edge_cases.py
+```
+
+Open the newest trace in ReasonLens and inspect **Answer Provenance**. The audit should distinguish the three claim states and lower the provenance score for the contradicted and unsupported claims.
