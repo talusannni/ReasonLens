@@ -4,7 +4,7 @@ import type { Trace, TraceMode } from './types';
 export async function runTrace(
   prompt: string,
   provider = process.env.REASONLENS_PROVIDER || 'mock',
-  model = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+  model = process.env.GROQ_MODEL || 'openai/gpt-oss-120b',
   mode: TraceMode = 'chat'
 ): Promise<Trace> {
   if (provider === 'mock') return buildScenarioTrace(prompt, mode);
