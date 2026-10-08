@@ -2,6 +2,7 @@
 
 import {useEffect,useMemo,useState} from 'react';
 import Graph from '../components/Graph';
+import Provenance from '../components/Provenance';
 import type {Trace,TraceMode} from '../lib/types';
 
 const starter='Should I use PostgreSQL or MongoDB for a multi-tenant SaaS application?';
@@ -105,7 +106,7 @@ export default function Home(){
      </div>
      {error&&<div className="error">{error}</div>}
     </section>
-    {trace?<><div className="trace-header"><div><div className="eyebrow">TRACE {trace.id.slice(0,8)}</div><h3>{trace.mode.toUpperCase()} · {trace.model}</h3></div><div className="metrics"><span>{trace.nodes.length} nodes</span><span>{trace.edges.length} edges</span><span>{trace.metrics.latencyMs} ms</span><span>{trace.metrics.inputTokens+trace.metrics.outputTokens} tokens</span><span>${trace.metrics.estimatedCostUsd.toFixed(6)}</span></div></div><Graph trace={trace}/><section className="answer-card"><div><div className="eyebrow">OBSERVABLE RESULT</div><h3>Final answer</h3></div><p>{trace.answer}</p></section></>:<EmptyState onRun={()=>run()}/>}
+    {trace?<><div className="trace-header"><div><div className="eyebrow">TRACE {trace.id.slice(0,8)}</div><h3>{trace.mode.toUpperCase()} · {trace.model}</h3></div><div className="metrics"><span>{trace.nodes.length} nodes</span><span>{trace.edges.length} edges</span><span>{trace.metrics.latencyMs} ms</span><span>{trace.metrics.inputTokens+trace.metrics.outputTokens} tokens</span><span>${trace.metrics.estimatedCostUsd.toFixed(6)}</span></div></div><Graph trace={trace}/><Provenance trace={trace}/><section className="answer-card"><div><div className="eyebrow">OBSERVABLE RESULT</div><h3>Final answer</h3></div><p>{trace.answer}</p></section></>:<EmptyState onRun={()=>run()}/>}
    </div>}
 
    {view==='history'&&<section className="history-page"><div className="history-tools"><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search traces…"/><span>{loadingHistory?'Loading…':visibleHistory.length+' traces'}</span><div className="history-actions">{connected&&<button className="ghost" onClick={loadPersisted}>Refresh</button>}{connected&&<button className="ghost" onClick={disconnect}>Disconnect</button>}</div></div>{visibleHistory.length===0?<EmptyState onRun={()=>setView('workspace')}/>:<div className="history-list">{visibleHistory.map(t=><div className="history-item" key={t.id}><button className="history-open" onClick={()=>load(t)}><div className="history-main"><strong>{t.prompt}</strong><small>{new Date(t.createdAt).toLocaleString()}</small></div><div className="history-meta"><b>{t.mode}</b><span>{t.nodes.length} nodes</span><span>{t.metrics.latencyMs} ms</span><span>${t.metrics.estimatedCostUsd.toFixed(6)}</span></div></button><label className="compare-check"><input type="checkbox" checked={compareIds.includes(t.id)} onChange={()=>toggleCompare(t.id)}/> Compare</label></div>)}</div>}</section>}
