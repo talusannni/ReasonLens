@@ -131,6 +131,12 @@ ReasonLens includes a model-agnostic evaluation runner that evaluates captured t
 
 Open **Evaluations** in the dashboard and choose **Run evaluation**. The benchmark evaluates the traces already stored in ReasonLens; missing cases are explicitly reported and never counted as passes.
 
+A dataset can pin a case to a specific trace with `traceId` when multiple traces share the same prompt:
+
+```json
+[{"id":"sla-baseline","name":"SLA baseline","prompt":"Is premium support availability 99.9% monthly?","traceId":"<trace-id>"}]
+```
+
 The benchmark reports:
 - pass/warn/fail rate
 - average provenance score
