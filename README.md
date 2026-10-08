@@ -17,7 +17,7 @@ ReasonLens is a model-agnostic, local-first visual debugger for AI systems. It f
 - Search trace history
 - Import/export trace JSON
 - Zero-key demo engine
-- OpenAI-compatible and Ollama-compatible provider
+- Groq API provider
 - Responsive desktop/mobile UI
 - GitHub Actions typecheck/build validation
 
@@ -30,17 +30,15 @@ npm run dev
 
 Open http://localhost:3000.
 
-For the demo engine, no API key is required. For an OpenAI-compatible provider configure:
+For the demo engine, no API key is required. For Groq configure:
 
 ```env
 REASONLENS_PROVIDER=openai
 REASONLENS_MODEL=<your-model>
-OPENAI_API_KEY=<your-key>
-OPENAI_BASE_URL=https://api.openai.com/v1
+GROQ_API_KEY=<your-key>
 ```
 
-Ollama can use `OPENAI_BASE_URL=http://localhost:11434/v1`.
-
+Ollama can use `
 ## Architecture
 
 ```text
