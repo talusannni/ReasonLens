@@ -1,22 +1,27 @@
 # ReasonLens
 
-**See how an AI answer is built.**
+**See how AI reaches an answer.**
 
-ReasonLens is an open-source, model-agnostic visual explorer for AI reasoning artifacts, evidence and execution. It intentionally does not claim to expose private chain-of-thought. Instead, it visualizes concise, externally explainable structure: claims, evidence, decisions, retrieval, tools and answers.
+ReasonLens is a model-agnostic, local-first visual debugger for AI systems. It focuses on observable, externally explainable execution artifacts rather than private chain-of-thought.
 
-## MVP
+## What works now
 
-- Interactive reasoning graph
-- Clickable nodes with details and metadata
-- Observable relationships: supports, contradicts, depends_on, produces, retrieves, calls, answers
-- Zero-key demo provider
-- OpenAI-compatible / Ollama adapter
-- Provider selection in the playground
-- Local-first architecture
-- Latency and token metrics
-- GitHub Actions build/typecheck workflow
+- Workspace with chat, RAG and agent trace modes
+- Interactive execution graph
+- Evidence and retrieval nodes for RAG workflows
+- Tool-call nodes for agent workflows
+- Claims, decisions and answer relationships
+- Node inspector with metadata
+- Trace metrics: latency and token counts
+- Local browser trace history
+- Search trace history
+- Import/export trace JSON
+- Zero-key demo engine
+- OpenAI-compatible and Ollama-compatible provider
+- Responsive desktop/mobile UI
+- GitHub Actions typecheck/build validation
 
-## Run locally
+## Run
 
 ```bash
 npm install
@@ -25,23 +30,56 @@ npm run dev
 
 Open http://localhost:3000.
 
-The default `mock` provider requires no API key. For an OpenAI-compatible endpoint, set `REASONLENS_PROVIDER=mock` only for demo mode, or select the OpenAI-compatible provider in the UI and set `OPENAI_API_KEY`, `OPENAI_BASE_URL`, and `REASONLENS_MODEL`. Ollama can use its OpenAI-compatible endpoint at `http://localhost:11434/v1`.
+For the demo engine, no API key is required. For an OpenAI-compatible provider configure:
+
+```env
+REASONLENS_PROVIDER=openai
+REASONLENS_MODEL=<your-model>
+OPENAI_API_KEY=<your-key>
+OPENAI_BASE_URL=https://api.openai.com/v1
+```
+
+Ollama can use `OPENAI_BASE_URL=http://localhost:11434/v1`.
 
 ## Architecture
 
-`Prompt -> Provider -> Structured Trace -> Reasoning Graph -> Explorer`
+```text
+User prompt
+    |
+    v
+Trace API
+    |
+    +--> Provider adapter --> Structured trace
+    |
+    +--> Demo scenarios (chat / RAG / agent)
+                              |
+                              v
+                     ReasonLens graph
+                              |
+              +---------------+---------------+
+              |               |               |
+           evidence        tools          decisions
+              |               |               |
+              +---------------+---------------+
+                              |
+                              v
+                         Final answer
+```
 
-The graph represents observable or explicitly structured artifacts, not hidden model chain-of-thought.
+## Important boundary
+
+ReasonLens does not attempt to expose hidden model chain-of-thought. It displays structured traces, evidence, tool execution, claims and decisions that can be intentionally produced and reviewed.
 
 ## Roadmap
 
-1. Trace ingestion SDK
-2. OpenTelemetry adapter
-3. RAG retrieval/evidence view
-4. Agent/tool execution view
-5. Model-vs-model comparison
-6. Evaluation: unsupported claims, contradictions and evidence coverage
-7. Persistent traces and team features
+- SDK for instrumenting applications
+- OpenTelemetry trace ingestion
+- Live streaming traces
+- Real RAG connector ingestion
+- Agent framework adapters
+- Unsupported-claim and evidence-coverage evaluation
+- Model comparison and regression evaluation
+- Persistent multi-user trace storage
 
 ## License
 
