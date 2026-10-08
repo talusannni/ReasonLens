@@ -200,12 +200,12 @@ def run_failure() -> None:
             raise RuntimeError("Expected Groq to reject the invalid model.")
         trace.node("warning", "Groq error", response.text[:1000], {"httpStatus": response.status_code})
         trace.answer(f"Expected failure captured: HTTP {response.status_code}")
-        trace.finish()
+        trace.finish("failed")
         print("FAILURE: captured expected Groq error")
     except Exception as exc:
         trace.node("warning", "Unhandled failure", str(exc))
         trace.answer(f"Failure captured: {exc}")
-        trace.finish()
+        trace.finish("failed")
         print("FAILURE: captured exception")
 
 
