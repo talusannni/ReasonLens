@@ -66,7 +66,7 @@ def groq(messages: list[dict[str, str]], trace, label: str) -> tuple[str, dict[s
         "analysis",
         label,
         f"Groq completed in {latency_ms} ms",
-        {"latencyMs": latency_ms},
+        {"latencyMs": latency_ms, "provider": "groq"},
     )
     trace.llm(
         MODEL,
@@ -75,6 +75,10 @@ def groq(messages: list[dict[str, str]], trace, label: str) -> tuple[str, dict[s
         usage_meta["input_tokens"],
         usage_meta["output_tokens"],
         provider="groq",
+        latency_ms=latency_ms,
+        request_id=response.headers.get("x-request-id"),
+        finish_reason=str(data.get("choices", [{}])[0].get("finish_reason", "")) or None,
+        input_messages=messages,
     )
     return content, usage_meta
 
@@ -109,7 +113,7 @@ def run_rag() -> None:
     ]
 
     with rl.trace(prompt, "rag") as trace:
-        retrieval_id = trace.retrieval(prompt, documents)
+        trace.retrieval(prompt, documents, retriever="local-deterministic", top_k=2)
         context = "\n\n".join(
             f"{d['title']}: {d['content']}" for d in documents if d["metadata"]["score"] >= 0.9
         )
@@ -124,7 +128,7 @@ def run_rag() -> None:
             trace,
             "RAG answer model",
         )
-        claim_id = trace.claim("Refund eligibility is supported by the 30-day policy.", [retrieval_id])
+        claim_id = trace.claim("Refund eligibility is supported by the 30-day policy.", ["refund-policy"], confidence=0.98)
         decision_id = trace.decision("Customer is eligible for a refund.")
         trace.edge(claim_id, decision_id, "depends_on")
         trace.answer(answer)
@@ -146,8 +150,10 @@ def run_agent() -> None:
             "Identify the order, inspect its status and purchase age, then apply refund policy.",
         )
 
+        tool_started = time.perf_counter()
         tool_result = lookup_order("123")
-        tool_id = trace.tool("get_order", {"id": "123"}, tool_result, success=True)
+        tool_latency_ms = int((time.perf_counter() - tool_started) * 1000)
+        tool_id = trace.tool("get_order", {"id": "123"}, tool_result, success=True, latency_ms=tool_latency_ms)
         trace.edge(plan, tool_id, "calls")
 
         policy = trace.retrieval(
@@ -180,7 +186,7 @@ def run_agent() -> None:
 
         decision = trace.decision("Order is within the 30-day refund window.")
         trace.edge(tool_id, decision, "produces")
-        trace.edge(policy, decision, "supports")
+        trace.edge("refund-policy", decision, "supports")
         trace.answer(answer)
     print("AGENT: completed")
 
@@ -198,7 +204,7 @@ def run_failure() -> None:
         )
         if response.ok:
             raise RuntimeError("Expected Groq to reject the invalid model.")
-        trace.node("warning", "Groq error", response.text[:1000], {"httpStatus": response.status_code})
+        trace.node("warning", "Groq error", response.text[:1000], {"httpStatus": response.status_code, "provider": "groq"})
         trace.answer(f"Expected failure captured: HTTP {response.status_code}")
         trace.finish("failed")
         print("FAILURE: captured expected Groq error")
