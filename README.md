@@ -39,6 +39,41 @@ GROQ_API_KEY=<your-key>
 ```
 
 
+## Real application instrumentation
+
+ReasonLens can ingest traces from an external AI application through `POST /api/traces`. Configure these server environment variables:
+
+```env
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=<server-only-key>
+REASONLENS_INGEST_KEY=<private-ingestion-key>
+```
+
+The ingestion API stores traces in Supabase and rejects requests without the ingestion key.
+
+### Python SDK
+
+See `sdk/python`. It supports LLM, retrieval, tool, claim, decision and answer events and posts completed traces to ReasonLens.
+
+### TypeScript SDK
+
+See `sdk/typescript/reasonlens.ts`. It provides the same core instrumentation primitives without adding a runtime dependency.
+
+Example:
+
+```ts
+import { ReasonLens } from './reasonlens';
+
+const rl = new ReasonLens('https://reasonlens.vercel.app', process.env.REASONLENS_INGEST_KEY);
+const trace = rl.trace('Answer a customer question', 'agent');
+const evidence = trace.retrieval('refund policy', [{ title: 'Refund policy', content: 'Refunds are allowed within 30 days.' }]);
+trace.tool('get_order', { id: '123' }, { status: 'delivered' });
+trace.claim('Order is eligible for refund', [evidence]);
+trace.decision('Approve refund');
+trace.answer('The order is eligible for a refund.');
+await trace.finish();
+```
+
 ## Architecture
 
 ```text
