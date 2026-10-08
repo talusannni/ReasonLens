@@ -72,6 +72,7 @@ class TraceContext:
         for doc in documents:
             did=self.node("evidence",str(doc.get("title") or doc.get("id") or "Evidence"),str(doc.get("content") or ""),doc.get("metadata") or {})
             self.edge(nid,did,"retrieves")
+        self._last_node_id = nid
         return nid
 
     def tool(self,name:str,input_data:Any,output_data:Any,success:bool=True)->str:
