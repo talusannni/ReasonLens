@@ -94,3 +94,13 @@
 .provenance-diff-top{display:flex;justify-content:space-between;gap:12px}.provenance-diff-top strong{font-size:12px;color:#1e293b}.provenance-diff-top span{text-transform:uppercase;font-size:9px;font-weight:800;color:#64748b}.provenance-diff p{margin:5px 0 0;font-size:11px;color:#64748b}
 .provenance-diff-meta{display:flex;gap:12px;flex-wrap:wrap;margin-top:7px;font-size:10px;color:#64748b}.provenance-diff-meta b{color:#334155}
 @media(max-width:700px){.provenance-comparison-head{flex-direction:column}.regression-score{align-self:flex-start}}
+
+.quality-gate{background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:22px}
+.quality-gate-head{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
+.quality-gate-head h3{margin:4px 0 5px;font-size:19px}.quality-gate-head p{margin:0;color:#64748b;font-size:13px}
+.quality-status{min-width:120px;text-align:center;border:1px solid #cbd5e1;border-radius:14px;padding:9px 12px}.quality-status strong{display:block;font-size:20px}.quality-status span{font-size:10px;color:#64748b}
+.quality-status.pass{border-color:#86efac;background:#f0fdf4;color:#166534}.quality-status.warn{border-color:#facc15;background:#fefce8;color:#854d0e}.quality-status.fail{border-color:#fca5a5;background:#fef2f2;color:#991b1b}
+.quality-rules{display:grid;gap:8px;margin-top:16px}.quality-rule{border:1px solid #e2e8f0;border-left:4px solid #94a3b8;border-radius:9px;padding:11px 13px}.quality-rule.pass{border-left-color:#16a34a}.quality-rule.warn{border-left-color:#d97706;background:#fffdf7}.quality-rule.fail{border-left-color:#dc2626;background:#fffafa}
+.quality-rule-main{display:flex;justify-content:space-between;gap:12px}.quality-rule-main strong{font-size:12px;color:#1e293b}.quality-rule-main span{text-transform:uppercase;font-size:9px;font-weight:800;color:#64748b}
+.quality-rule-meta{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;font-size:10px;color:#64748b}.quality-rule-meta b{color:#334155}.quality-rule p{margin:5px 0 0;font-size:11px;color:#64748b}
+@media(max-width:700px){.quality-gate-head{flex-direction:column}.quality-status{align-self:flex-start}}
