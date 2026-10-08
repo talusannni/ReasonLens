@@ -28,6 +28,9 @@ export default function Home(){
  const [sidebarCollapsed,setSidebarCollapsed]=useState(false);
  useEffect(()=>{setSidebarCollapsed(localStorage.getItem('reasonlens-sidebar-collapsed')==='1');},[]);
  function toggleSidebar(){setSidebarCollapsed(v=>{const next=!v;localStorage.setItem('reasonlens-sidebar-collapsed',next?'1':'0');return next;});}
+ const [sidebarCollapsed,setSidebarCollapsed]=useState(false);
+ useEffect(()=>{setSidebarCollapsed(localStorage.getItem('reasonlens-sidebar-collapsed')==='1');},[]);
+ function toggleSidebar(){setSidebarCollapsed(v=>{const next=!v;localStorage.setItem('reasonlens-sidebar-collapsed',next?'1':'0');return next;});}
 
  async function loadPersisted(){
   setLoadingHistory(true);
@@ -74,8 +77,8 @@ export default function Home(){
  function importTrace(e:React.ChangeEvent<HTMLInputElement>){const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const t=JSON.parse(String(reader.result)) as Trace;if(!t.id||!Array.isArray(t.nodes)||!Array.isArray(t.edges))throw new Error('Invalid trace');setTrace(t);setHistory(h=>[t,...h.filter(x=>x.id!==t.id)].slice(0,30));setView('workspace')}catch(err){setError(err instanceof Error?err.message:'Invalid trace file')}};reader.readAsText(file)}
  function toggleCompare(id:string){setCompareIds(ids=>ids.includes(id)?ids.filter(x=>x!==id):ids.length<2?[...ids,id]:[ids[1],id])}
 
- return <main className="shell">
-  <aside className="sidebar">
+ return <main className={"shell"+(sidebarCollapsed?" sidebar-collapsed":"")}>
+  <aside className="sidebar"><button className="sidebar-toggle" onClick={toggleSidebar} aria-label={sidebarCollapsed?"Expand sidebar":"Collapse sidebar"} title={sidebarCollapsed?"Expand sidebar":"Collapse sidebar"}>{sidebarCollapsed?"›":"‹"}</button>
    <div className="brand"><span className="brand-full">Reason<span>Lens</span></span><span className="brand-mini">R</span></div>
    <div className="tagline">See how AI reaches an answer.</div>
    <nav>
