@@ -16,7 +16,7 @@ export interface EvaluationCaseResult {
  report:QualityGateReport|null;
 }
 export interface EvaluationRun {
- id:string; name:string; createdAt:string; totalCases:number; evaluatedCases:number; missingCases:number;
+ id:string; name:string; createdAt:string; dataset:EvaluationCase[]; totalCases:number; evaluatedCases:number; missingCases:number;
  passedCases:number; warnedCases:number; failedCases:number; passRate:number;
  averageProvenanceScore:number; totalLatencyMs:number; averageLatencyMs:number; totalCostUsd:number;
  results:EvaluationCaseResult[];
@@ -46,7 +46,7 @@ export function evaluateDataset(name:string,cases:EvaluationCase[],traces:Trace[
  const totalLatencyMs=traceList.reduce((sum,t)=>sum+t.metrics.latencyMs,0);
  const totalCostUsd=traceList.reduce((sum,t)=>sum+t.metrics.estimatedCostUsd,0);
  return {
-  id,name,createdAt:new Date().toISOString(),totalCases:cases.length,evaluatedCases:evaluated.length,
+  id,name,createdAt:new Date().toISOString(),dataset:cases,totalCases:cases.length,evaluatedCases:evaluated.length,
   missingCases:results.filter(r=>r.status==='missing').length,passedCases,warnedCases,failedCases,
   passRate:cases.length?Math.round(passedCases/cases.length*1000)/10:0,
   averageProvenanceScore:scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length*10)/10:0,
