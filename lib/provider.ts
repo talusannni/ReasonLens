@@ -36,13 +36,34 @@ export async function runTrace(
 
   const parsed = JSON.parse(content);
   const promptNode = { id: 'prompt', kind: 'prompt' as const, label: 'User prompt', detail: prompt };
+  const latencyMs = Date.now() - started;
+  const usage = data.usage || {};
+  const modelNode = {
+    id: 'model-call',
+    kind: 'model' as const,
+    label: 'LLM · ' + model,
+    detail: String(parsed.answer || ''),
+    metadata: {
+      inputTokens: usage.prompt_tokens || 0,
+      outputTokens: usage.completion_tokens || 0,
+      latencyMs,
+      finishReason: data.choices?.[0]?.finish_reason || 'unknown',
+      provider: 'groq'
+    }
+  };
   const answerNode = { id: 'answer', kind: 'answer' as const, label: 'Final answer', detail: String(parsed.answer || '') };
   const nodes = (Array.isArray(parsed.nodes) ? parsed.nodes : [])
-    .filter((n: any) => n?.id && n?.kind && n?.label && n.id !== 'prompt' && n.id !== 'answer')
-    .concat([promptNode, answerNode]);
+    .filter((n: any) => n?.id && n?.kind && n?.label && n.id !== 'prompt' && n.id !== 'answer' && n.id !== 'model-call')
+    .concat([promptNode, modelNode, answerNode]);
   const edges = (Array.isArray(parsed.edges) ? parsed.edges : [])
     .filter((e: any) => e?.source && e?.target && e?.kind);
 
+  if (!edges.some((e: any) => e.source === 'model-call' && e.target === 'answer')) {
+    edges.push({ id: 'model-answer', source: 'model-call', target: 'answer', kind: 'answers' });
+  }
+  if (!edges.some((e: any) => e.source === 'prompt' && e.target === 'model-call')) {
+    edges.push({ id: 'prompt-model', source: 'prompt', target: 'model-call', kind: 'depends_on' });
+  }
   if (!edges.some((e: any) => e.target === 'answer')) {
     edges.push({
       id: 'final',
@@ -64,10 +85,10 @@ export async function runTrace(
     answer: answerNode.detail || '',
     status: 'completed',
     metrics: {
-      latencyMs: Date.now() - started,
-      inputTokens: data.usage?.prompt_tokens || 0,
-      outputTokens: data.usage?.completion_tokens || 0,
-      estimatedCostUsd: estimateGroqCost(model, data.usage?.prompt_tokens || 0, data.usage?.completion_tokens || 0)
+      latencyMs,
+      inputTokens: usage.prompt_tokens || 0,
+      outputTokens: usage.completion_tokens || 0,
+      estimatedCostUsd: estimateGroqCost(model, usage.prompt_tokens || 0, usage.completion_tokens || 0)
     }
   };
 }
