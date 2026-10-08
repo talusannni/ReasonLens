@@ -63,7 +63,7 @@ export default function Home(){
      <textarea value={prompt} onChange={e=>setPrompt(e.target.value)} placeholder="Ask a question or describe an AI workflow…" aria-label="Prompt"/>
      <div className="run-controls">
       <div className="mode-tabs">{modes.map(m=><button key={m.id} className={mode===m.id?'selected':''} onClick={()=>setMode(m.id)}><strong>{m.label}</strong><small>{m.description}</small></button>)}</div>
-      <div className="run-row"><select value={provider} onChange={e=>setProvider(e.target.value)}><option value="mock">Demo engine — no key</option><option value="openai">OpenAI-compatible / Ollama</option></select><button className="primary" onClick={run} disabled={busy||!prompt.trim()}>{busy?'Running trace…':'Run trace'}</button></div>
+      <div className="run-row"><select value={provider} onChange={e=>setProvider(e.target.value)}><option value="mock">Demo engine — no key</option><option value="groq">Groq API</option></select><button className="primary" onClick={run} disabled={busy||!prompt.trim()}>{busy?'Running trace…':'Run trace'}</button></div>
      </div>
      {error&&<div className="error">{error}</div>}
     </section>
@@ -72,7 +72,7 @@ export default function Home(){
 
    {view==='history'&&<section className="history-page"><div className="history-tools"><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search traces…"/><span>{visibleHistory.length} traces</span></div>{visibleHistory.length===0?<EmptyState onRun={()=>setView('workspace')}/>:<div className="history-list">{visibleHistory.map(t=><button key={t.id} onClick={()=>load(t)}><div className="history-main"><strong>{t.prompt}</strong><small>{new Date(t.createdAt).toLocaleString()}</small></div><div className="history-meta"><b>{t.mode}</b><span>{t.nodes.length} nodes</span><span>{t.metrics.latencyMs} ms</span></div></button>)}</div>}</section>}
 
-   {view==='settings'&&<section className="settings-page"><div className="settings-card"><div><h3>Provider</h3><p>Choose the engine used when you run a trace.</p></div><select value={provider} onChange={e=>setProvider(e.target.value)}><option value="mock">Demo engine</option><option value="openai">OpenAI-compatible / Ollama</option></select></div><div className="settings-card"><div><h3>Trace privacy</h3><p>History is stored in this browser only. No trace database is required.</p></div><span className="badge">LOCAL</span></div><div className="settings-card"><div><h3>Model output policy</h3><p>ReasonLens visualizes structured, externally explainable artifacts. It does not request or expose private chain-of-thought.</p></div><span className="badge">SAFE</span></div></section>}
+   {view==='settings'&&<section className="settings-page"><div className="settings-card"><div><h3>Provider</h3><p>Choose the engine used when you run a trace.</p></div><select value={provider} onChange={e=>setProvider(e.target.value)}><option value="mock">Demo engine</option><option value="groq">Groq API</option></select></div><div className="settings-card"><div><h3>Trace privacy</h3><p>History is stored in this browser only. No trace database is required.</p></div><span className="badge">LOCAL</span></div><div className="settings-card"><div><h3>Model output policy</h3><p>ReasonLens visualizes structured, externally explainable artifacts. It does not request or expose private chain-of-thought.</p></div><span className="badge">SAFE</span></div></section>}
   </section>
  </main>
 }
