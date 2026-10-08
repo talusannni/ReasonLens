@@ -125,6 +125,28 @@ npm run test:quality-gates
 
 The default gate policy fails runs below **80/100 provenance**, with disallowed contradictions or a missing answer provenance path. Unsupported claims, provenance drops, latency and estimated cost can produce warnings.
 
+## Evaluation benchmark
+
+ReasonLens includes a model-agnostic evaluation runner that evaluates captured traces against the Core RAG Quality Suite.
+
+Open **Evaluations** in the dashboard and choose **Run evaluation**. The benchmark evaluates the traces already stored in ReasonLens; missing cases are explicitly reported and never counted as passes.
+
+The benchmark reports:
+- pass/warn/fail rate
+- average provenance score
+- evaluated vs missing cases
+- average latency and total cost
+- per-case quality-gate status
+- regression comparison between two evaluation runs
+
+Run the deterministic test suite locally:
+
+```powershell
+npm run test:evaluation
+```
+
+This evaluates observable artifacts only. It does not inspect or request private model chain-of-thought.
+
 ## License
 
 Apache-2.0.
