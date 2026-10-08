@@ -18,6 +18,14 @@ class TraceContext:
     started: float = field(default_factory=time.perf_counter)
     answer: str = ""
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if exc_type is None:
+            self.finish()
+        return False
+
     def node(self, kind:str, label:str, detail:str="", metadata:dict[str,Any]|None=None, node_id:str|None=None)->str:
         nid=node_id or str(uuid.uuid4())
         self.nodes.append({"id":nid,"kind":kind,"label":label,"detail":detail,"metadata":metadata or {}})
