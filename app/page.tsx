@@ -6,7 +6,7 @@ import Provenance from '../components/Provenance';
 import ProvenanceComparison from '../components/ProvenanceComparison';
 import QualityGate from '../components/QualityGate';
 import {analyzeProvenance} from '../lib/provenance';
-import {compareEvaluationRuns,type EvaluationRun} from '../lib/evaluation';
+import {compareEvaluationRuns,CORE_RAG_DATASET,type EvaluationCase,type EvaluationRun} from '../lib/evaluation';
 import type {Trace,TraceMode} from '../lib/types';
 
 const starter='Should I use PostgreSQL or MongoDB for a multi-tenant SaaS application?';
@@ -35,6 +35,7 @@ export default function Home(){
  const [evaluationLoading,setEvaluationLoading]=useState(false);
  const [evaluationBusy,setEvaluationBusy]=useState(false);
  const [evaluationSelection,setEvaluationSelection]=useState<string[]>([]);
+ const [evaluationCases,setEvaluationCases]=useState<EvaluationCase[]>(CORE_RAG_DATASET);
  useEffect(()=>{setSidebarCollapsed(localStorage.getItem('reasonlens-sidebar-collapsed')==='1');},[]);
  function toggleSidebar(){setSidebarCollapsed(v=>{const next=!v;localStorage.setItem('reasonlens-sidebar-collapsed',next?'1':'0');return next;});}
 
@@ -63,10 +64,11 @@ export default function Home(){
  }
  async function runEvaluation(){
   setEvaluationBusy(true);setError('');
-  try{const r=await fetch('/api/evaluations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:'Core RAG Quality Suite'})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Evaluation failed');setEvaluationRuns(rs=>[d.run,...rs.filter(x=>x.id!==d.run.id)]);setView('evaluations');}
+  try{const r=await fetch('/api/evaluations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:'Core RAG Quality Suite',cases:evaluationCases})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Evaluation failed');setEvaluationRuns(rs=>[d.run,...rs.filter(x=>x.id!==d.run.id)]);setView('evaluations');}
   catch(e){setError(e instanceof Error?e.message:'Evaluation failed');}finally{setEvaluationBusy(false);}
  }
  function toggleEvaluation(id:string){setEvaluationSelection(ids=>ids.includes(id)?ids.filter(x=>x!==id):ids.length<2?[...ids,id]:[ids[1],id]);}
+ function importEvaluationDataset(event:React.ChangeEvent<HTMLInputElement>){const file=event.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(String(reader.result));const cases=Array.isArray(parsed)?parsed:parsed.cases;if(!Array.isArray(cases)||!cases.length)throw new Error('Dataset must be a non-empty JSON array or an object with a cases array.');if(cases.some((item:any)=>typeof item?.id!=='string'||typeof item?.name!=='string'||typeof item?.prompt!=='string'))throw new Error('Every case needs id, name and prompt.');setEvaluationCases(cases);setError('');}catch(e){setError(e instanceof Error?e.message:'Invalid evaluation dataset');}};reader.readAsText(file);event.target.value='';}
  useEffect(()=>{if(connected)loadEvaluations();},[connected]);
  async function connect(){
   setError('');
@@ -139,19 +141,19 @@ export default function Home(){
     {compareTraces.length===2?<Comparison a={compareTraces[0]} b={compareTraces[1]}/>:<div className="empty compact"><div className="empty-icon">↔</div><h3>Select two traces</h3><p>Open Trace history, select two Compare checkboxes, then return here.</p><button className="primary" onClick={()=>setView('history')}>Choose traces</button></div>}
    </section>}
 
-   {view==='evaluations'&&<EvaluationPage runs={evaluationRuns} loading={evaluationLoading} busy={evaluationBusy} selection={evaluationSelection} onRun={runEvaluation} onToggle={toggleEvaluation}/>}
+   {view==='evaluations'&&<EvaluationPage runs={evaluationRuns} dataset={evaluationCases} loading={evaluationLoading} busy={evaluationBusy} selection={evaluationSelection} onRun={runEvaluation} onToggle={toggleEvaluation} onImport={importEvaluationDataset}/>}
 
    {view==='settings'&&<section className="settings-page"><div className="settings-card"><div><h3>Provider</h3><p>ReasonLens uses Groq for real AI execution. The demo engine is available for local UI testing.</p></div><select value={provider} onChange={e=>setProvider(e.target.value)}><option value="mock">Demo engine</option><option value="groq">Groq API</option></select></div><div className="settings-card"><div><h3>Trace persistence</h3><p>Traces are stored in Supabase and loaded into the dashboard through an authenticated server session.</p></div><span className="badge">SUPABASE</span></div><div className="settings-card"><div><h3>Cost model</h3><p>Groq pricing is calculated from the model's reported input and output token usage.</p></div><span className="badge">LIVE</span></div><div className="settings-card"><div><h3>Model output policy</h3><p>ReasonLens visualizes structured, externally explainable artifacts. It does not request or expose private chain-of-thought.</p></div><span className="badge">SAFE</span></div></section>}
   </section>
  </main>
 }
 
-function EvaluationPage({runs,loading,busy,selection,onRun,onToggle}:{runs:EvaluationRun[];loading:boolean;busy:boolean;selection:string[];onRun:()=>void;onToggle:(id:string)=>void}){
+function EvaluationPage({runs,dataset,loading,busy,selection,onRun,onToggle,onImport}:{runs:EvaluationRun[];dataset:EvaluationCase[];loading:boolean;busy:boolean;selection:string[];onRun:()=>void;onToggle:(id:string)=>void;onImport:(event:React.ChangeEvent<HTMLInputElement>)=>void}){
  const selected=selection.map(id=>runs.find(r=>r.id===id)).filter(Boolean) as EvaluationRun[];
  const latest=runs[0];
  const comparison=selected.length===2?compareEvaluationRuns(selected[0],selected[1]):null;
  return <section className="evaluation-page">
-  <div className="evaluation-toolbar"><div><div className="eyebrow">EVALUATION DATASET</div><h3>Core RAG Quality Suite</h3><p>Evaluate captured traces against observable provenance, contradiction, latency and cost gates.</p></div><button className="primary" onClick={onRun} disabled={busy}>{busy?'Evaluating…':'Run evaluation'}</button></div>
+  <div className="evaluation-toolbar"><div><div className="eyebrow">EVALUATION DATASET</div><h3>Evaluation dataset</h3><p>{dataset.length} cases · Evaluate captured traces against observable provenance, contradiction, latency and cost gates.</p></div><div className="evaluation-toolbar-actions"><label className="ghost evaluation-import">Import JSON<input type="file" accept="application/json" onChange={onImport}/></label><button className="primary" onClick={onRun} disabled={busy}>{busy?'Evaluating…':'Run evaluation'}</button></div></div>
   {loading?<div className="empty compact"><h3>Loading evaluations…</h3></div>:!runs.length?<div className="empty compact"><div className="empty-icon">✓</div><h3>No evaluation runs yet</h3><p>Run the benchmark against the traces currently stored in ReasonLens.</p><button className="primary" onClick={onRun} disabled={busy}>{busy?'Evaluating…':'Run first evaluation'}</button></div>:<>
    {latest&&<div className="evaluation-summary"><div><span>STATUS</span><strong className={latest.failedCases?'bad':latest.warnedCases?'warn':'good'}>{latest.failedCases?'FAIL':latest.warnedCases?'WARN':'PASS'}</strong></div><div><span>PASS RATE</span><strong>{latest.passRate}%</strong></div><div><span>PROVENANCE</span><strong>{latest.averageProvenanceScore}/100</strong></div><div><span>CASES</span><strong>{latest.evaluatedCases}/{latest.totalCases}</strong></div><div><span>LATENCY AVG</span><strong>{latest.averageLatencyMs} ms</strong></div><div><span>COST</span><strong>{latest.totalCostUsd.toFixed(6)} USD</strong></div></div>}
    <div className="evaluation-card"><div className="evaluation-card-head"><div><h3>Evaluation history</h3><p>Select two runs to compare benchmark quality over time.</p></div><span>{runs.length} runs</span></div><div className="evaluation-list">{runs.map(run=><div className="evaluation-item" key={run.id}><label><input type="checkbox" checked={selection.includes(run.id)} onChange={()=>onToggle(run.id)}/><div><strong>{run.name}</strong><small>{new Date(run.createdAt).toLocaleString()}</small></div></label><div className="evaluation-item-metrics"><b className={run.failedCases?'bad':run.warnedCases?'warn':'good'}>{run.failedCases?'FAIL':run.warnedCases?'WARN':'PASS'}</b><span>{run.passRate}% pass</span><span>{run.averageProvenanceScore}/100 provenance</span><span>{run.evaluatedCases}/{run.totalCases} cases</span></div></div>)}</div></div>
