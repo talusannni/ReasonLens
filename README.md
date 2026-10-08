@@ -112,7 +112,18 @@ ReasonLens does not attempt to expose hidden model chain-of-thought. It displays
 - Agent framework adapters
 - Unsupported-claim and evidence-coverage evaluation
 - Model comparison and regression evaluation
+- Quality gates for provenance, contradictions, unsupported claims, latency and cost
 - Persistent multi-user trace storage
+
+## Quality gate checks
+
+Run the deterministic quality-gate test suite:
+
+```powershell
+npm run test:quality-gates
+```
+
+The default gate policy fails runs below **80/100 provenance**, with disallowed contradictions or a missing answer provenance path. Unsupported claims, provenance drops, latency and estimated cost can produce warnings.
 
 ## License
 
