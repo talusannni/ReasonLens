@@ -27,7 +27,7 @@ class TraceContextTests(unittest.TestCase):
         ]
         self.assertEqual(
             {(edge["source"], edge["target"]) for edge in evidence_edges},
-            {("doc-a", "doc-a"), ("doc-b", "doc-b")},
+            {(retrieval_id, "doc-a"), (retrieval_id, "doc-b")},
         )
 
         dependency_targets = {
