@@ -19,8 +19,8 @@ export class TraceContext{
    this.nodes.push({id:'prompt',kind:'prompt',label:'User prompt',detail:prompt,metadata:{mode}});
    this.lastNodeId='prompt';
  }
- node(kind:NodeKind,label:string,detail='',metadata:Record<string,unknown>={}):string{
-   const id=crypto.randomUUID();this.nodes.push({id,kind,label,detail,metadata});
+ node(kind:NodeKind,label:string,detail='',metadata:Record<string,unknown>={},nodeId?:string):string{
+   const id=nodeId||crypto.randomUUID();this.nodes.push({id,kind,label,detail,metadata});
    if(this.lastNodeId)this.edge(this.lastNodeId,id,'depends_on');this.lastNodeId=id;return id;
  }
  edge(source:string,target:string,kind='depends_on'):string{
