@@ -14,8 +14,9 @@ function validTrace(value:unknown):value is Trace{
  return !!t&&typeof t==='object'&&typeof t.id==='string'&&typeof t.createdAt==='string'&&typeof t.prompt==='string'&&Array.isArray(t.nodes)&&Array.isArray(t.edges)&&typeof t.answer==='string'&&!!t.metrics;
 }
 
-export async function GET(){
- try{return NextResponse.json({traces:await listTraces()});}
+export async function GET(req:Request){
+ try{
+  if(!authorized(req))return NextResponse.json({error:'Unauthorized'},{status:401});return NextResponse.json({traces:await listTraces()});}
  catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Persistence error'},{status:503});}
 }
 
