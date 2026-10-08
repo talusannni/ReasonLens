@@ -135,7 +135,8 @@ function Comparison({a,b}:{a:Trace;b:Trace}){
   ['Edges',String(a.edges.length),String(b.edges.length)],
   ['Provenance score',analyzeProvenance(a).score+'/100',analyzeProvenance(b).score+'/100'],
   ['Supported claims',String(analyzeProvenance(a).supportedClaims),String(analyzeProvenance(b).supportedClaims)],
-  ['Unsupported claims',String(analyzeProvenance(a).unsupportedClaims),String(analyzeProvenance(b).unsupportedClaims)]
+  ['Unsupported claims',String(analyzeProvenance(a).unsupportedClaims),String(analyzeProvenance(b).unsupportedClaims)],
+  ['Contradicted claims',String(analyzeProvenance(a).contradictedClaims),String(analyzeProvenance(b).contradictedClaims)]
  ];
  return <div className="comparison"><div className="comparison-head"><div><span>RUN A</span><strong>{a.prompt.slice(0,90)}</strong></div><div><span>RUN B</span><strong>{b.prompt.slice(0,90)}</strong></div></div><div className="comparison-table"><div className="comparison-row header"><b>Metric</b><b>Run A</b><b>Run B</b></div>{rows.map(r=><div className="comparison-row" key={r[0]}><span>{r[0]}</span><strong>{r[1]}</strong><strong>{r[2]}</strong></div>)}</div><div className="comparison-answers"><article><span>RUN A ANSWER</span><p>{a.answer}</p></article><article><span>RUN B ANSWER</span><p>{b.answer}</p></article></div></div>
 }
