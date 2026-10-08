@@ -9,10 +9,12 @@ ReasonLens is an open-source, model-agnostic visual explorer for AI reasoning ar
 - Interactive reasoning graph
 - Clickable nodes with details and metadata
 - Observable relationships: supports, contradicts, depends_on, produces, retrieves, calls, answers
-- Provider abstraction with a zero-key demo mode
-- OpenAI-compatible API adapter
+- Zero-key demo provider
+- OpenAI-compatible / Ollama adapter
+- Provider selection in the playground
 - Local-first architecture
 - Latency and token metrics
+- GitHub Actions build/typecheck workflow
 
 ## Run locally
 
@@ -23,11 +25,13 @@ npm run dev
 
 Open http://localhost:3000.
 
-The default `mock` provider requires no API key. For an OpenAI-compatible endpoint, set `REASONLENS_PROVIDER=openai`, `OPENAI_API_KEY`, `OPENAI_BASE_URL`, and `REASONLENS_MODEL`. Ollama can use its OpenAI-compatible endpoint at `http://localhost:11434/v1`.
+The default `mock` provider requires no API key. For an OpenAI-compatible endpoint, set `REASONLENS_PROVIDER=mock` only for demo mode, or select the OpenAI-compatible provider in the UI and set `OPENAI_API_KEY`, `OPENAI_BASE_URL`, and `REASONLENS_MODEL`. Ollama can use its OpenAI-compatible endpoint at `http://localhost:11434/v1`.
 
 ## Architecture
 
 `Prompt -> Provider -> Structured Trace -> Reasoning Graph -> Explorer`
+
+The graph represents observable or explicitly structured artifacts, not hidden model chain-of-thought.
 
 ## Roadmap
 
