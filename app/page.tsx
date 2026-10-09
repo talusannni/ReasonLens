@@ -7,6 +7,7 @@ import ProvenanceComparison from '../components/ProvenanceComparison';
 import EvidenceComparison from '../components/EvidenceComparison';
 import QualityGate from '../components/QualityGate';
 import {analyzeProvenance} from '../lib/provenance';
+import {isRetrievalOnlyTrace} from '../lib/evidence-diff';
 import {compareEvaluationRuns,CORE_RAG_DATASET,type EvaluationCase,type EvaluationRun} from '../lib/evaluation';
 import type {Trace,TraceMode} from '../lib/types';
 
@@ -165,6 +166,9 @@ function EvaluationPage({runs,dataset,loading,busy,selection,onRun,onToggle,onIm
 }
 
 function Comparison({a,b}:{a:Trace;b:Trace}){
+ const answerQualityAvailable=!isRetrievalOnlyTrace(a)&&!isRetrievalOnlyTrace(b);
+ const pA=analyzeProvenance(a),pB=analyzeProvenance(b);
+ const qualityValue=(value:string)=>answerQualityAvailable?value:'N/A';
  const rows=[
   ['Mode',a.mode,b.mode],
   ['Model',a.model,b.model],
@@ -175,12 +179,12 @@ function Comparison({a,b}:{a:Trace;b:Trace}){
   ['Estimated cost','$'+a.metrics.estimatedCostUsd.toFixed(6),'$'+b.metrics.estimatedCostUsd.toFixed(6)],
   ['Nodes',String(a.nodes.length),String(b.nodes.length)],
   ['Edges',String(a.edges.length),String(b.edges.length)],
-  ['Provenance score',analyzeProvenance(a).score+'/100',analyzeProvenance(b).score+'/100'],
-  ['Supported claims',String(analyzeProvenance(a).supportedClaims),String(analyzeProvenance(b).supportedClaims)],
-  ['Unsupported claims',String(analyzeProvenance(a).unsupportedClaims),String(analyzeProvenance(b).unsupportedClaims)],
-  ['Contradicted claims',String(analyzeProvenance(a).contradictedClaims),String(analyzeProvenance(b).contradictedClaims)]
+  ['Provenance score',qualityValue(pA.score+'/100'),qualityValue(pB.score+'/100')],
+  ['Supported claims',qualityValue(String(pA.supportedClaims)),qualityValue(String(pB.supportedClaims))],
+  ['Unsupported claims',qualityValue(String(pA.unsupportedClaims)),qualityValue(String(pB.unsupportedClaims))],
+  ['Contradicted claims',qualityValue(String(pA.contradictedClaims)),qualityValue(String(pB.contradictedClaims))]
  ];
- return <div className="comparison"><div className="comparison-head"><div><span>RUN A</span><strong>{a.prompt.slice(0,90)}</strong></div><div><span>RUN B</span><strong>{b.prompt.slice(0,90)}</strong></div></div><div className="comparison-table"><div className="comparison-row header"><b>Metric</b><b>Run A</b><b>Run B</b></div>{rows.map(r=><div className="comparison-row" key={r[0]}><span>{r[0]}</span><strong>{r[1]}</strong><strong>{r[2]}</strong></div>)}</div><ProvenanceComparison a={a} b={b}/><EvidenceComparison a={a} b={b}/><QualityGate a={a} b={b}/><div className="comparison-answers"><article><span>RUN A ANSWER</span><p>{a.answer}</p></article><article><span>RUN B ANSWER</span><p>{b.answer}</p></article></div></div>
+ return <div className="comparison"><div className="comparison-head"><div><span>RUN A</span><strong>{a.prompt.slice(0,90)}</strong></div><div><span>RUN B</span><strong>{b.prompt.slice(0,90)}</strong></div></div><div className="comparison-table"><div className="comparison-row header"><b>Metric</b><b>Run A</b><b>Run B</b></div>{rows.map(r=><div className="comparison-row" key={r[0]}><span>{r[0]}</span><strong>{r[1]}</strong><strong>{r[2]}</strong></div>)}</div><ProvenanceComparison a={a} b={b}/><EvidenceComparison a={a} b={b}/><QualityGate a={a} b={b}/><div className="comparison-answers"><article><span>RUN A ANSWER</span><p>{a.answer|| (isRetrievalOnlyTrace(a)?'Not generated — retrieval-only replay.':'No answer captured.')}</p></article><article><span>RUN B ANSWER</span><p>{b.answer|| (isRetrievalOnlyTrace(b)?'Not generated — retrieval-only replay.':'No answer captured.')}</p></article></div></div>
 }
 
 function EmptyState({onRun}:{onRun:()=>void}){return <section className="empty"><div className="empty-icon">◈</div><h3>No trace selected</h3><p>Run a chat, RAG or agent trace to inspect how inputs, evidence, tools and decisions connect.</p><button className="primary" onClick={onRun}>Run demo trace</button></section>}
