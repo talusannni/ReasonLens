@@ -25,6 +25,9 @@ export default function Home(){
  const [provider,setProvider]=useState('mock');
  const [trace,setTrace]=useState<Trace|null>(null);
  const [history,setHistory]=useState<Trace[]>([]);
+ const [historyTotal,setHistoryTotal]=useState(0);
+ const [historyPage,setHistoryPage]=useState(1);
+ const [historyPageSize,setHistoryPageSize]=useState(25);
  const [view,setView]=useState<'workspace'|'history'|'analysis'|'evaluations'|'settings'>('workspace');
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState('');
@@ -43,14 +46,17 @@ export default function Home(){
  function toggleSidebar(){setSidebarCollapsed(v=>{const next=!v;localStorage.setItem('reasonlens-sidebar-collapsed',next?'1':'0');return next;});}
 
 
- async function loadPersisted(){
+ async function loadPersisted(page=historyPage){
   setLoadingHistory(true);
   try{
-   const r=await fetch('/api/dashboard/traces',{cache:'no-store'});
+   const params=new URLSearchParams({page:String(page),pageSize:String(historyPageSize),search,mode:historyModeFilter,status:historyStatusFilter,provider:historyProviderFilter,model:historyModelFilter,days:historyTimeFilter,sort:historySort,execution:historyExecutionFilter});
+   const r=await fetch('/api/dashboard/traces?'+params.toString(),{cache:'no-store'});
    if(r.status===401){setConnected(false);return;}
    const d=await r.json();
    if(!r.ok)throw new Error(d.error||'Could not load traces');
    setHistory(Array.isArray(d.traces)?d.traces:[]);
+   setHistoryTotal(Number(d.total)||0);
+   setHistoryPage(Number(d.page)||page);
    setConnected(true);
   }catch(e){setError(e instanceof Error?e.message:'Could not load persisted traces');}
   finally{setLoadingHistory(false);}
@@ -66,23 +72,9 @@ export default function Home(){
  const [historySort,setHistorySort]=useState('newest');
  const historyProviders=useMemo(()=>Array.from(new Set(history.map(t=>t.provider))).sort(),[history]);
  const historyModels=useMemo(()=>Array.from(new Set(history.map(t=>t.model))).sort(),[history]);
- const visibleHistory=useMemo(()=>{
-  const q=search.trim().toLowerCase();
-  const now=Date.now();
-  return history.filter(t=>{
-   const execution=getTraceExecutionInfo(t);
-   const matchesSearch=!q||t.prompt.toLowerCase().includes(q)||t.mode.toLowerCase().includes(q)||t.id.toLowerCase().includes(q)||t.provider.toLowerCase().includes(q)||t.model.toLowerCase().includes(q);
-   const matchesTime=historyTimeFilter==='all'||now-new Date(t.createdAt).getTime()<=Number(historyTimeFilter)*24*60*60*1000;
-   return matchesSearch&&(historyModeFilter==='all'||t.mode===historyModeFilter)&&(historyExecutionFilter==='all'||execution.kind===historyExecutionFilter)&&(historyStatusFilter==='all'||t.status===historyStatusFilter)&&(historyProviderFilter==='all'||t.provider===historyProviderFilter)&&(historyModelFilter==='all'||t.model===historyModelFilter)&&matchesTime;
-  }).sort((a,b)=>{
-   if(historySort==='oldest')return new Date(a.createdAt).getTime()-new Date(b.createdAt).getTime();
-   if(historySort==='latency-desc')return b.metrics.latencyMs-a.metrics.latencyMs;
-   if(historySort==='latency-asc')return a.metrics.latencyMs-b.metrics.latencyMs;
-   if(historySort==='cost-desc')return b.metrics.estimatedCostUsd-a.metrics.estimatedCostUsd;
-   if(historySort==='cost-asc')return a.metrics.estimatedCostUsd-b.metrics.estimatedCostUsd;
-   return new Date(b.createdAt).getTime()-new Date(a.createdAt).getTime();
-  });
- },[history,search,historyModeFilter,historyExecutionFilter,historyStatusFilter,historyProviderFilter,historyModelFilter,historyTimeFilter,historySort]);
+ useEffect(()=>{if(view!=='history'||!connected)return;setHistoryPage(1);const timer=setTimeout(()=>{loadPersisted(1);},250);return()=>clearTimeout(timer);},[search,historyModeFilter,historyExecutionFilter,historyStatusFilter,historyProviderFilter,historyModelFilter,historyTimeFilter,historySort,historyPageSize,connected,view]);
+ useEffect(()=>{if(view==='history'&&connected&&historyPage>1)loadPersisted(historyPage);},[historyPage]);
+ const visibleHistory=history;
  const compareTraces=useMemo(()=>compareIds.map(id=>history.find(t=>t.id===id)).filter(Boolean) as Trace[],[compareIds,history]);
 
  async function loadEvaluations(){
@@ -112,14 +104,14 @@ export default function Home(){
  }
  async function disconnect(){
   await fetch('/api/dashboard/login',{method:'DELETE'});
-  setConnected(false);setHistory([]);setTrace(null);setEvaluationRuns([]);setEvaluationSelection([]);
+  setConnected(false);setHistory([]);setHistoryTotal(0);setHistoryPage(1);setTrace(null);setEvaluationRuns([]);setEvaluationSelection([]);
  }
  async function run(){
   setBusy(true);setError('');
   try{
    const r=await fetch('/api/trace',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,provider,mode})});
    const d=await r.json();if(!r.ok)throw new Error(d.error||'Request failed');
-   setTrace(d);setHistory(h=>[d,...h.filter(x=>x.id!==d.id)].slice(0,30));
+   setTrace(d);setHistory(h=>[d,...h.filter(x=>x.id!==d.id)].slice(0,30));setHistoryTotal(n=>n+1);
   }catch(e){setError(e instanceof Error?e.message:'Request failed')}
   finally{setBusy(false)}
  }
@@ -163,7 +155,7 @@ export default function Home(){
    </div>}
 
    {view==='history'&&<section className="history-page">
-    <div className="history-tools"><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search prompt, trace ID, provider, model…" aria-label="Search traces"/><span>{loadingHistory?'Loading…':visibleHistory.length+' of '+history.length+' traces'}</span><div className="history-actions">{compareIds.length>0&&<button className="ghost" onClick={()=>setView('analysis')}>Compare {compareIds.length}</button>}{connected&&<button className="ghost" onClick={loadPersisted}>Refresh</button>}{connected&&<button className="ghost" onClick={disconnect}>Disconnect</button>}</div></div>
+    <div className="history-tools"><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search prompt, trace ID, provider, model…" aria-label="Search traces"/><span>{loadingHistory?'Loading…':(historyTotal===0?0:(historyPage-1)*historyPageSize+history.length)+'–'+Math.min(historyPage*historyPageSize,historyTotal)+' of '+historyTotal+' traces'}</span><div className="history-actions">{compareIds.length>0&&<button className="ghost" onClick={()=>setView('analysis')}>Compare {compareIds.length}</button>}{connected&&<button className="ghost" onClick={loadPersisted}>Refresh</button>}{connected&&<button className="ghost" onClick={disconnect}>Disconnect</button>}</div></div>
     <div className="history-filters">
      <label>Execution type<select value={historyExecutionFilter} onChange={e=>setHistoryExecutionFilter(e.target.value)}><option value="all">All execution types</option><option value="retrieval-only">Retrieval only</option><option value="full-pipeline">Pipeline · LLM executed</option><option value="llm-executed">LLM executed</option><option value="partial">Failed / partial</option><option value="no-llm">No LLM request captured</option></select></label>
      <label>Mode<select value={historyModeFilter} onChange={e=>setHistoryModeFilter(e.target.value)}><option value="all">All modes</option><option value="chat">Chat</option><option value="rag">RAG</option><option value="agent">Agent</option></select></label>
@@ -172,9 +164,10 @@ export default function Home(){
      <label>Model<select value={historyModelFilter} onChange={e=>setHistoryModelFilter(e.target.value)}><option value="all">All models</option>{historyModels.map(value=><option key={value} value={value}>{value}</option>)}</select></label>
      <label>Time range<select value={historyTimeFilter} onChange={e=>setHistoryTimeFilter(e.target.value)}><option value="all">Any time</option><option value="1">Last 24 hours</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option></select></label>
      <label>Sort by<select value={historySort} onChange={e=>setHistorySort(e.target.value)}><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="latency-desc">Slowest first</option><option value="latency-asc">Fastest first</option><option value="cost-desc">Highest cost</option><option value="cost-asc">Lowest cost</option></select></label>
-     <button className="ghost history-reset" onClick={()=>{setSearch('');setHistoryModeFilter('all');setHistoryExecutionFilter('all');setHistoryStatusFilter('all');setHistoryProviderFilter('all');setHistoryModelFilter('all');setHistoryTimeFilter('all');setHistorySort('newest');}}>Reset filters</button>
+     <button className="ghost history-reset" onClick={()=>{setSearch('');setHistoryModeFilter('all');setHistoryExecutionFilter('all');setHistoryStatusFilter('all');setHistoryProviderFilter('all');setHistoryModelFilter('all');setHistoryTimeFilter('all');setHistorySort('newest');setHistoryPage(1);}}>Reset filters</button>
     </div>
     {visibleHistory.length===0?<div className="empty compact"><div className="empty-icon">⌕</div><h3>No matching traces</h3><p>Change or reset your search and filters.</p><button className="ghost" onClick={()=>{setSearch('');setHistoryModeFilter('all');setHistoryExecutionFilter('all');setHistoryStatusFilter('all');setHistoryProviderFilter('all');setHistoryModelFilter('all');setHistoryTimeFilter('all');}}>Clear filters</button></div>:<div className="trace-table-wrap"><table className="trace-table"><thead><tr><th><span className="sr-only">Compare</span></th><th>Trace / prompt</th><th>Execution type</th><th>Mode</th><th>Status</th><th>Latency</th><th>Cost (USD)</th><th>Created</th><th>Action</th></tr></thead><tbody>{visibleHistory.map(t=>{const info=getTraceExecutionInfo(t);return <tr key={t.id}><td><input type="checkbox" aria-label={'Compare trace '+t.id.slice(0,8)} checked={compareIds.includes(t.id)} onChange={()=>toggleCompare(t.id)}/></td><td className="trace-table-prompt"><button onClick={()=>load(t)} title="Open trace details">{t.prompt}</button><small>{t.id.slice(0,8)} · {t.provider} · {t.model}</small></td><td><span className={'execution-badge execution-'+info.kind} title={info.detail}>{info.label}</span></td><td><span className="table-mode">{t.mode.toUpperCase()}</span></td><td><span className={'trace-status status-'+t.status}>{t.status}</span></td><td className="numeric">{t.metrics.latencyMs.toLocaleString()} ms</td><td className="numeric">${t.metrics.estimatedCostUsd.toFixed(6)}</td><td className="trace-date">{new Date(t.createdAt).toLocaleString()}</td><td><button className="ghost trace-open-action" onClick={()=>load(t)}>Open</button></td></tr>})}</tbody></table></div>}
+    <div className="history-pagination"><div className="history-page-size"><label htmlFor="trace-page-size">Rows per page</label><select id="trace-page-size" value={historyPageSize} onChange={e=>{setHistoryPageSize(Number(e.target.value));setHistoryPage(1);}}><option value={10}>10</option><option value={25}>25</option><option value={50}>50</option><option value={100}>100</option></select><span>{historyTotal} total traces</span></div><div className="history-page-controls"><button className="ghost" disabled={historyPage<=1||loadingHistory} onClick={()=>setHistoryPage(p=>Math.max(1,p-1))}>Previous</button><span>Page {historyPage} of {Math.max(1,Math.ceil(historyTotal/historyPageSize))}</span><button className="ghost" disabled={historyPage>=Math.ceil(historyTotal/historyPageSize)||loadingHistory} onClick={()=>setHistoryPage(p=>p+1)}>Next</button></div></div>
    </section>}
 
    {view==='analysis'&&<section className="analysis-page">
