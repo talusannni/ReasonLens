@@ -156,7 +156,7 @@ def main() -> None:
         retrieval_latency = int((time.perf_counter() - retrieval_started) * 1000)
         retrieval_id = trace.retrieval(
             prompt, retrieved, retriever="deterministic-lexical",
-            top_k=4, latency_ms=retrieval_latency,
+            top_k=args.top_k, latency_ms=retrieval_latency,
         )
         trace.edge(chunk_id, retrieval_id, "depends_on")
         evidence_context = "\n\n".join(
