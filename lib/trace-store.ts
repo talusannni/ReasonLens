@@ -64,10 +64,7 @@ export async function listTracePage(options:TraceListOptions):Promise<TraceListP
  const sorts:Record<string,string>={'newest':'created_at.desc','oldest':'created_at.asc','latency-desc':'metrics->>latencyMs.desc','latency-asc':'metrics->>latencyMs.asc','cost-desc':'metrics->>estimatedCostUsd.desc','cost-asc':'metrics->>estimatedCostUsd.asc'};
  params.set('order',sorts[options.sort||'newest']||sorts.newest);
  if(options.execution==='retrieval-only')params.set('nodes','cs.[{"metadata":{"replayMode":"retrieval-only"}}]');
- else if(options.execution==='full-pipeline'){
-  params.append('nodes','cs.[{"kind":"model"}]');
-  params.append('nodes','cs.[{"kind":"retrieval"}]');
- }else if(options.execution==='llm-executed')params.set('nodes','cs.[{"kind":"model"}]');
+ else if(options.execution==='full-pipeline')params.set('nodes','cs.'+JSON.stringify([{kind:'model'},{kind:'retrieval'}]));else if(options.execution==='llm-executed')params.set('nodes','cs.[{"kind":"model"}]');
  else if(options.execution==='no-llm')params.set('nodes','not.cs.[{"kind":"model"}]');
  else if(options.execution==='partial')params.set('status','in.(failed,running)');
  const from=(page-1)*pageSize;
