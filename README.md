@@ -219,7 +219,7 @@ Run the deterministic experiment-analysis tests:
 npm run test:experiment-analysis
 ```
 
-The migration `supabase/migrations/202610090002_normalize_experiment_groups.sql` normalizes existing variants so each workflow shares one experiment ID. Apply it to the production Supabase project when promoting this change.
+The migration `supabase/migrations/202610090002_normalize_experiment_groups.sql` normalizes existing variants so each workflow shares one experiment ID. It has been applied to the production Supabase project; the migration remains in source control for reproducibility.
 
 ## License
 
