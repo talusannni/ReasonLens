@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {compareEvidence, extractEvidence, getCapturedLlmInput} from '../lib/evidence-diff';
+import {compareEvidence, extractEvidence, getCapturedLlmInput, isRetrievalOnlyTrace} from '../lib/evidence-diff';
 import type {Trace} from '../lib/types';
 
 function trace(id:string, evidence:Array<{id:string;source:string;page:number;content:string;rank:number;score:number}>, options:{topK?:number;messages?:Array<Record<string,unknown>>;contextText?:string}={}):Trace{
@@ -37,4 +37,6 @@ const messages=[{role:'user',content:'Question and context'}];
 assert.equal(getCapturedLlmInput(trace('with-input',[],{messages})),JSON.stringify(messages,null,2));
 assert.match(getCapturedLlmInput(trace('retrieval-only',[],{contextText:'[doc-1] policy text'}))||'',/No LLM call was made/);
 assert.equal(getCapturedLlmInput(trace('no-input',[])),null);
+assert.equal(isRetrievalOnlyTrace(trace('retrieval-only',[],{contextText:'prepared context'})),true);
+assert.equal(isRetrievalOnlyTrace(trace('full-run',[],{messages})),false);
 console.log('evidence diff tests passed');
