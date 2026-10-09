@@ -4,6 +4,7 @@ import {CORE_RAG_DATASET,evaluateDataset} from '../../../lib/evaluation';
 import {saveEvaluationRun,listEvaluationRuns} from '../../../lib/evaluation-store';
 import {getTrace,listTraces} from '../../../lib/trace-store';
 import {dashboardAuthorized} from '../../../lib/dashboard-auth';
+import type {Trace} from '../../../lib/types';
 
 export async function GET(req:Request){
  if(!dashboardAuthorized(req))return NextResponse.json({error:'Dashboard authentication required'},{status:401});
@@ -19,7 +20,8 @@ export async function POST(req:Request){
   const traces=await listTraces();
   const pinnedIds=Array.from(new Set((cases as Array<{traceId?:unknown}>).map(item=>typeof item?.traceId==='string'?item.traceId:undefined).filter((id):id is string=>!!id)));
   const pinned=await Promise.all(pinnedIds.map(id=>getTrace(id).catch(()=>undefined)));
-  const traceMap=new Map([...traces,...pinned.filter((t):t is NonNullable<typeof t>=>!!t)].map(trace=>[trace.id,trace]));
+  const allTraces=[...traces,...pinned.filter((t):t is Trace=>!!t)];
+  const traceMap=new Map<string,Trace>(allTraces.map(trace=>[trace.id,trace] as const));
   const run=evaluateDataset(name,cases,Array.from(traceMap.values()),undefined,randomUUID());
   await saveEvaluationRun(run);
   return NextResponse.json({run},{status:201});
