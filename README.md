@@ -201,6 +201,26 @@ python sdk/python/examples/document_rag.py --top-k 4
 
 For full mode, set both `GROQ_API_KEY` and `REASONLENS_INGEST_KEY`. This example uses a deterministic lexical retriever over its bundled PDF/DOCX fixtures; it is a working reference harness, not an automatic runner for an arbitrary external vector database. To replay a customer's own pipeline, instrument and invoke that application's retrieval function.
 
+## Experiment grouping and automatic regression analysis
+
+Every trace has a workflow ID. Variant runs inherit the same workflow ID and use it as a stable experiment-group ID, so sibling variants created from the root or another variant stay together. The dashboard's **Experiment regression gate** automatically compares each variant against the workflow baseline.
+
+The gate checks:
+- Run-status regressions (fail)
+- Provenance-score drops greater than 5 points (fail)
+- Latency increases greater than 25% (warn)
+- Estimated-cost increases greater than 25% (warn)
+
+Retrieval-only traces are explicitly excluded from answer-provenance scoring. The analysis uses captured observable artifacts, not hidden model reasoning. These alerts are dashboard warnings/gates, not email or webhook notifications.
+
+Run the deterministic experiment-analysis tests:
+
+```powershell
+npm run test:experiment-analysis
+```
+
+The migration `supabase/migrations/202610090002_normalize_experiment_groups.sql` normalizes existing variants so each workflow shares one experiment ID. Apply it to the production Supabase project when promoting this change.
+
 ## License
 
 Apache-2.0.

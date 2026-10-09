@@ -29,6 +29,7 @@ jobs:
       - run: npm run test:quality-gates
       - run: npm run test:evaluation
       - run: npm run test:evaluation-regression
+      - run: npm run test:experiment-analysis
       - run: npm run test:evidence-diff
       - run: npm run test:trace-execution
       - run: npm run build
