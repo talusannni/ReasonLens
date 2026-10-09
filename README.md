@@ -246,3 +246,14 @@ npx tsx scripts/check-evaluation-regression.ts .\baseline.json .\current.json
 ```
 
 The gate compares captured evaluation results; it does not invoke a model or rerun the application. A release pipeline should create the current evaluation run first, export or fetch the stored baseline/current JSON, then execute this command and treat exit code 1 as a release blocker. Latency and cost thresholds are warnings by default.
+
+
+## Trace lineage and experiment runs
+
+Each execution is stored as a separate trace. The dashboard can link a new run to a parent trace using **Run variant from this trace**; change the prompt or settings before executing to create an experiment branch. The trace history labels the workflow root or variant, and the workspace lineage panel shows sibling runs, parent IDs, configuration fingerprints, and quick actions to open, compare, branch, or pin a trace into the evaluation dataset.
+
+Lineage metadata is stored in `workflow_id`, `parent_trace_id`, `experiment_id`, and `config_fingerprint` on `public.reasonlens_traces`. Existing traces are backfilled as workflow roots by the migration `supabase/migrations/202610090001_add_trace_lineage.sql`. The deployed Supabase project has this migration applied.
+
+- **Compare** selects lineage traces for the existing run comparison view.
+- **Evaluate** pins a trace to the evaluation dataset; pinned trace IDs are fetched directly so older traces are not missed by the default history window.
+- A configuration fingerprint is a compact hash of prompt, provider, model, and mode. It identifies an input/config change; it is not a semantic equivalence guarantee.
