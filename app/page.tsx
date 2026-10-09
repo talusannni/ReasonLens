@@ -79,7 +79,7 @@ export default function Home(){
  useEffect(()=>{if(view!=='history'||!connected)return;setHistoryPage(1);const timer=setTimeout(()=>{loadPersisted(1);},250);return()=>clearTimeout(timer);},[search,historyModeFilter,historyExecutionFilter,historyStatusFilter,historyProviderFilter,historyModelFilter,historyTimeFilter,historySort,historyPageSize,connected,view]);
  useEffect(()=>{if(view==='history'&&connected&&historyPage>1)loadPersisted(historyPage);},[historyPage]);
  const visibleHistory=history;
- const compareTraces=useMemo(()=>{const all=[...history,...lineageTraces,...(trace?[trace]:[])];const unique=new Map(all.map(t=>[t.id,t]));return compareIds.map(id=>unique.get(id)).filter(Boolean) as Trace[];},[compareIds,history,lineageTraces,trace]);
+ const compareTraces=useMemo(()=>{const all=[...history,...lineageTraces,...(trace?[trace]:[])];const unique=new Map<string,Trace>(all.map(t=>[t.id,t] as const));return compareIds.map(id=>unique.get(id)).filter(Boolean) as Trace[];},[compareIds,history,lineageTraces,trace]);
 
  async function loadEvaluations(){
   if(!connected)return; setEvaluationLoading(true);
