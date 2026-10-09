@@ -13,7 +13,7 @@ export default function ExperimentAnalysis({traces}:{traces:Trace[]}){
    <div><div className="eyebrow">EXPERIMENT REGRESSION GATE</div><h3>Baseline vs variants</h3><p>Each variant is compared with the workflow root using captured run status, provenance, latency and estimated cost.</p></div>
    <span className={'experiment-gate-status '+overall.toLowerCase()}>{variants.length?overall:'BASELINE'}</span>
   </div>
-  <div className="experiment-baseline"><span>BASELINE</span><strong>{baseline.id.slice(0,8)} · {baseline.model}</strong><p>{baseline.prompt}</p><small>{new Date(baseline.createdAt).toLocaleString()} · {baseline.metrics.latencyMs} ms · ${baseline.metrics.estimatedCostUsd.toFixed(6)}</small></div>
+  <div className="experiment-baseline"><span>BASELINE · EXPERIMENT {baseline.lineage?.experimentId?.slice(0,8)||baseline.lineage?.workflowId?.slice(0,8)||baseline.id.slice(0,8)}</span><strong>{baseline.id.slice(0,8)} · {baseline.model}</strong><p>{baseline.prompt}</p><small>{new Date(baseline.createdAt).toLocaleString()} · {baseline.metrics.latencyMs} ms · ${baseline.metrics.estimatedCostUsd.toFixed(6)}</small></div>
   {!variants.length?<p className="experiment-empty">Run a variant from this trace to enable automatic regression analysis.</p>:<div className="experiment-variants">{variants.map(result=><article className="experiment-variant" key={result.trace.id}>
    <div className="experiment-variant-head"><div><strong>Variant {result.trace.id.slice(0,8)}</strong><small>{result.trace.model} · {new Date(result.trace.createdAt).toLocaleString()}</small></div><span className={'experiment-gate-status '+result.status.toLowerCase()}>{result.status}</span></div>
    <p className="experiment-variant-prompt">{result.trace.prompt}</p>
