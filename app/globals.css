@@ -253,3 +253,32 @@
 @media(max-width:700px){.experiment-analysis{padding:14px}.experiment-deltas{grid-template-columns:1fr}.experiment-rule{grid-template-columns:42px minmax(0,1fr)}.experiment-rule>b{grid-column:2;text-align:left}}
 
 .experiment-variant-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.experiment-variant-actions .ghost{font-size:11px;padding:6px 9px}
+
+
+/* Trace history workflow-family links */
+.trace-lineage-cell{min-width:118px;white-space:normal}
+.history-lineage-meta{display:flex;align-items:center;gap:6px}
+.history-lineage-meta code{font-size:10px;color:#475569;background:#f8fafc;border:1px solid #e2e8f0;border-radius:5px;padding:3px 5px}
+.history-lineage-badge{display:inline-flex;align-items:center;width:max-content;border-radius:999px;padding:3px 6px;font-size:8px;font-weight:800;letter-spacing:.04em;white-space:nowrap}
+.history-lineage-badge.root{color:#1d4ed8;background:#eff6ff;border:1px solid #bfdbfe}
+.history-lineage-badge.variant{color:#6d28d9;background:#f5f3ff;border:1px solid #ddd6fe}
+.history-parent-link{display:flex;align-items:center;gap:4px;margin:5px 0 2px;color:#7c3aed;font-size:9px;white-space:nowrap}
+.history-parent-link button{border:0;background:transparent;padding:0;color:#6d28d9;font-size:9px;font-weight:800;text-decoration:underline;cursor:pointer}
+.history-family-button{margin-top:5px;padding:4px 6px;font-size:9px;white-space:nowrap}
+.history-family-panel{margin:14px 0;padding:17px;border:1px solid #c7d2fe;border-radius:13px;background:linear-gradient(180deg,#fafaff 0%,#fff 100%)}
+.history-family-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:13px}
+.history-family-head h3{margin:4px 0;font-size:15px;color:#1e293b}
+.history-family-head p,.history-family-loading{margin:0;color:#64748b;font-size:11px;line-height:1.5}
+.history-family-list{display:grid;gap:0}
+.history-family-item{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:10px;align-items:start;padding:12px 8px;border-top:1px solid #edf0f7;min-width:0}
+.history-family-item.is-variant{margin-left:19px;padding-left:13px;border-left:2px solid #ddd6fe}
+.history-family-tree{display:grid;place-items:center;width:21px;height:21px;border-radius:50%;background:#e0e7ff;color:#4338ca;font-size:11px;font-weight:800}
+.history-family-item.is-variant .history-family-tree{background:#f5f3ff;color:#7c3aed}
+.history-family-main{min-width:0}
+.history-family-title{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.history-family-title strong{font-size:11px;color:#1e293b}
+.history-family-title small,.history-family-main>small{font-size:9px;color:#64748b}
+.history-family-main p{margin:6px 0;font-size:11px;line-height:1.5;color:#334155;overflow-wrap:anywhere}
+.history-family-actions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.history-family-actions .ghost{padding:5px 7px;font-size:9px}
+@media(max-width:700px){.history-family-item{grid-template-columns:22px minmax(0,1fr)}.history-family-actions{grid-column:2;justify-content:flex-start}.history-family-head{align-items:flex-start}.trace-lineage-cell{min-width:110px}}
