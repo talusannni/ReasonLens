@@ -166,3 +166,12 @@
 .quality-not-evaluated-note strong{font-size:12px;color:#334155}
 .quality-not-evaluated-note span{font-size:11px;line-height:1.5;color:#64748b}
 .provenance-comparison.not-evaluated{border-color:#cbd5e1}
+
+
+.execution-badge{display:inline-flex;align-items:center;width:max-content;max-width:100%;margin-top:7px;padding:4px 8px;border:1px solid #cbd5e1;border-radius:999px;background:#f8fafc;color:#475569;font-size:10px;font-weight:700;line-height:1.35;white-space:normal}
+.execution-retrieval-only{border-color:#93c5fd;background:#eff6ff;color:#1d4ed8}
+.execution-full-pipeline,.execution-llm-executed{border-color:#86efac;background:#f0fdf4;color:#166534}
+.execution-partial{border-color:#fca5a5;background:#fef2f2;color:#b91c1c}
+.execution-no-llm{border-color:#cbd5e1;background:#f8fafc;color:#475569}
+.history-main .execution-badge{margin-top:4px}
+.trace-header>div:first-child{display:flex;flex-direction:column;align-items:flex-start}
