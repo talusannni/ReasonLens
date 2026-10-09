@@ -153,6 +153,30 @@ npm run test:evaluation
 
 This evaluates observable artifacts only. It does not inspect or request private model chain-of-thought.
 
+## Replay and evidence debugging
+
+The **Run comparison** view includes an **Evidence diff** panel for two captured traces. It identifies evidence chunks added, removed, or changed, compares rank and retrieval score, and displays the captured LLM request messages when the instrumentation stored them. This comparison does not itself execute the retriever.
+
+To run the bundled PDF/DOCX RAG example again **without calling Groq**, use retrieval-only mode. It repeats document parsing, lexical retrieval, and context assembly, stores a new trace, and records that the LLM was intentionally skipped:
+
+```powershell
+$env:PYTHONPATH="sdk/python"
+# REASONLENS_INGEST_KEY must be set to your existing ReasonLens ingest key.
+python sdk/python/examples/generate_document_fixtures.py
+python sdk/python/examples/document_rag.py --retrieval-only --top-k 2
+python sdk/python/examples/document_rag.py --retrieval-only --top-k 4
+```
+
+Open **Trace history**, select the two newly created traces, and open **Run comparison**. The Evidence diff panel shows which chunks changed between the two retrieval settings. No `GROQ_API_KEY` is needed for retrieval-only mode. The fixture generator only creates local sample documents if they are missing.
+
+A full end-to-end run uses the same example and current top-k setting but makes a real Groq request:
+
+```powershell
+python sdk/python/examples/document_rag.py --top-k 4
+```
+
+For full mode, set both `GROQ_API_KEY` and `REASONLENS_INGEST_KEY`. This example uses a deterministic lexical retriever over its bundled PDF/DOCX fixtures; it is a working reference harness, not an automatic runner for an arbitrary external vector database. To replay a customer's own pipeline, instrument and invoke that application's retrieval function.
+
 ## License
 
 Apache-2.0.
