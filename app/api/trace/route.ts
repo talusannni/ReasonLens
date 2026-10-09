@@ -23,7 +23,7 @@ export async function POST(req:Request){
     })).digest('hex').slice(0,16);
     trace.lineage={
       workflowId:parent?.lineage?.workflowId||parent?.id||trace.id,
-      ...(parent?{parentTraceId:parent.id,experimentId:parent.lineage?.experimentId||randomUUID()}:{}),
+      ...(parent?{parentTraceId:parent.id,experimentId:parent.lineage?.workflowId||parent.id}:{}),
       configFingerprint
     };
     await saveTrace(trace);
