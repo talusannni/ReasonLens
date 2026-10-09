@@ -161,13 +161,17 @@ To run the bundled PDF/DOCX RAG example again **without calling Groq**, use retr
 
 ```powershell
 $env:PYTHONPATH="sdk/python"
-# REASONLENS_INGEST_KEY must be set to your existing ReasonLens ingest key.
-python sdk/python/examples/generate_document_fixtures.py
+$env:REASONLENS_URL="https://reasonlens.vercel.app"
+$env:REASONLENS_INGEST_KEY="<your existing ReasonLens ingest key>"
+# Generate sample files only if either fixture is missing.
+if (!(Test-Path "sdk/python/examples/data/documents/travel_policy_2026.pdf") -or !(Test-Path "sdk/python/examples/data/documents/expense_policy.docx")) {
+  python sdk/python/examples/generate_document_fixtures.py
+}
 python sdk/python/examples/document_rag.py --retrieval-only --top-k 2
 python sdk/python/examples/document_rag.py --retrieval-only --top-k 4
 ```
 
-Open **Trace history**, select the two newly created traces, and open **Run comparison**. The Evidence diff panel shows which chunks changed between the two retrieval settings. No `GROQ_API_KEY` is needed for retrieval-only mode. The fixture generator only creates local sample documents if they are missing.
+Open **Trace history**, select the two newly created traces, and open **Run comparison**. The Evidence diff panel shows which chunks changed between the two retrieval settings. No `GROQ_API_KEY` is needed for retrieval-only mode. The fixture generator writes local sample documents and can overwrite existing fixture files, so run it only when the sample files are missing.
 
 A full end-to-end run uses the same example and current top-k setting but makes a real Groq request:
 
