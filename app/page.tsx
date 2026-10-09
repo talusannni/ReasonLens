@@ -25,6 +25,8 @@ export default function Home(){
  const [mode,setMode]=useState<TraceMode>('rag');
  const [provider,setProvider]=useState('mock');
  const [trace,setTrace]=useState<Trace|null>(null);
+ const [lineageTraces,setLineageTraces]=useState<Trace[]>([]);
+ const [pendingParentTraceId,setPendingParentTraceId]=useState<string|undefined>();
  const [history,setHistory]=useState<Trace[]>([]);
  const [historyTotal,setHistoryTotal]=useState(0);
  const [historyPage,setHistoryPage]=useState(1);
@@ -63,6 +65,7 @@ export default function Home(){
   finally{setLoadingHistory(false);}
  }
  useEffect(()=>{loadPersisted();},[]);
+ useEffect(()=>{if(!connected||!trace){setLineageTraces([]);return;}let active=true;fetch('/api/dashboard/traces/'+encodeURIComponent(trace.id)+'/lineage',{cache:'no-store'}).then(async r=>{const d=await r.json();if(active&&r.ok)setLineageTraces(Array.isArray(d.traces)?d.traces:[]);}).catch(()=>{if(active)setLineageTraces([]);});return()=>{active=false;};},[connected,trace?.id]);
 
  const [historyModeFilter,setHistoryModeFilter]=useState('all');
  const [historyExecutionFilter,setHistoryExecutionFilter]=useState('all');
@@ -76,7 +79,7 @@ export default function Home(){
  useEffect(()=>{if(view!=='history'||!connected)return;setHistoryPage(1);const timer=setTimeout(()=>{loadPersisted(1);},250);return()=>clearTimeout(timer);},[search,historyModeFilter,historyExecutionFilter,historyStatusFilter,historyProviderFilter,historyModelFilter,historyTimeFilter,historySort,historyPageSize,connected,view]);
  useEffect(()=>{if(view==='history'&&connected&&historyPage>1)loadPersisted(historyPage);},[historyPage]);
  const visibleHistory=history;
- const compareTraces=useMemo(()=>compareIds.map(id=>history.find(t=>t.id===id)).filter(Boolean) as Trace[],[compareIds,history]);
+ const compareTraces=useMemo(()=>{const all=[...history,...lineageTraces,...(trace?[trace]:[])];const unique=new Map(all.map(t=>[t.id,t]));return compareIds.map(id=>unique.get(id)).filter(Boolean) as Trace[];},[compareIds,history,lineageTraces,trace]);
 
  async function loadEvaluations(){
   if(!connected)return; setEvaluationLoading(true);
@@ -110,13 +113,15 @@ export default function Home(){
  async function run(){
   setBusy(true);setError('');
   try{
-   const r=await fetch('/api/trace',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,provider,mode})});
+   const r=await fetch('/api/trace',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,provider,mode,parentTraceId:pendingParentTraceId})});
    const d=await r.json();if(!r.ok)throw new Error(d.error||'Request failed');
-   setTrace(d);setHistory(h=>[d,...h.filter(x=>x.id!==d.id)].slice(0,30));setHistoryTotal(n=>n+1);
+   setTrace(d);setHistory(h=>[d,...h.filter(x=>x.id!==d.id)].slice(0,30));setHistoryTotal(n=>n+1);setPendingParentTraceId(undefined);
   }catch(e){setError(e instanceof Error?e.message:'Request failed')}
   finally{setBusy(false)}
  }
  function load(t:Trace){setTrace(t);setPrompt(t.prompt);setMode(t.mode);setView('workspace')}
+ function startVariant(t:Trace){setTrace(t);setPrompt(t.prompt);setMode(t.mode);setProvider(t.provider==='groq'?'groq':'mock');setPendingParentTraceId(t.id);setView('workspace');setError('')}
+ function addTraceToEvaluation(t:Trace){setEvaluationCases(cases=>cases.some(item=>item.traceId===t.id)?cases:[...cases,{id:'trace-'+t.id,name:'Trace '+t.id.slice(0,8),prompt:t.prompt,traceId:t.id,description:'Pinned trace from lineage'}]);setView('evaluations');}
  function exportTrace(){if(!trace)return;const blob=new Blob([JSON.stringify(trace,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`reasonlens-${trace.id}.json`;a.click();URL.revokeObjectURL(a.href)}
  function importTrace(e:React.ChangeEvent<HTMLInputElement>){const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const t=JSON.parse(String(reader.result)) as Trace;if(!t.id||!Array.isArray(t.nodes)||!Array.isArray(t.edges))throw new Error('Invalid trace');setTrace(t);setHistory(h=>[t,...h.filter(x=>x.id!==t.id)].slice(0,30));setView('workspace')}catch(err){setError(err instanceof Error?err.message:'Invalid trace file')}};reader.readAsText(file)}
  function toggleCompare(id:string){setCompareIds(ids=>ids.includes(id)?ids.filter(x=>x!==id):ids.length<2?[...ids,id]:[ids[1],id])}
@@ -145,6 +150,7 @@ export default function Home(){
    {view==='workspace'&&<div className="workspace">
     <section className="run-panel">
      <div className="section-title"><div><h3>Run a trace</h3><p>Capture the observable structure around an AI answer.</p></div></div>
+     {pendingParentTraceId&&<div className="lineage-pending"><span>New run will branch from trace <code>{pendingParentTraceId.slice(0,8)}</code>. Modify the prompt or settings, then run the variant.</span><button className="ghost" onClick={()=>setPendingParentTraceId(undefined)}>Clear link</button></div>}
      <textarea value={prompt} onChange={e=>setPrompt(e.target.value)} placeholder="Ask a question or describe an AI workflow…" aria-label="Prompt"/>
      <div className="run-controls">
       <div className="mode-tabs">{modes.map(m=><button key={m.id} className={mode===m.id?'selected':''} onClick={()=>setMode(m.id)}><strong>{m.label}</strong><small>{m.description}</small></button>)}</div>
@@ -152,7 +158,7 @@ export default function Home(){
      </div>
      {error&&<div className="error">{error}</div>}
     </section>
-    {trace?<><div className="trace-header"><div><div className="eyebrow">TRACE {trace.id.slice(0,8)}</div><h3>{trace.mode.toUpperCase()} · {trace.model}</h3><span className={`execution-badge execution-${getTraceExecutionInfo(trace).kind}`} title={getTraceExecutionInfo(trace).detail}>{getTraceExecutionInfo(trace).label}</span></div><div className="metrics"><span>{trace.nodes.length} nodes</span><span>{trace.edges.length} edges</span><span>{trace.metrics.latencyMs} ms</span><span>{trace.metrics.inputTokens+trace.metrics.outputTokens} tokens</span><span>${trace.metrics.estimatedCostUsd.toFixed(6)}</span></div></div><Graph trace={trace}/><Provenance trace={trace}/><QualityGate trace={trace}/><section className="answer-card"><div><div className="eyebrow">OBSERVABLE RESULT</div><h3>Final answer</h3></div><p>{trace.answer}</p></section></>:<EmptyState onRun={()=>run()}/>}
+    {trace?<><div className="trace-header"><div><div className="eyebrow">TRACE {trace.id.slice(0,8)}</div><h3>{trace.mode.toUpperCase()} · {trace.model}</h3><span className={`execution-badge execution-${getTraceExecutionInfo(trace).kind}`} title={getTraceExecutionInfo(trace).detail}>{getTraceExecutionInfo(trace).label}</span><div className="trace-lineage-actions"><button className="ghost" onClick={()=>startVariant(trace)}>Run variant from this trace</button><button className="ghost" onClick={()=>addTraceToEvaluation(trace)}>Add to evaluation</button></div></div><div className="metrics"><span>{trace.nodes.length} nodes</span><span>{trace.edges.length} edges</span><span>{trace.metrics.latencyMs} ms</span><span>{trace.metrics.inputTokens+trace.metrics.outputTokens} tokens</span><span>${trace.metrics.estimatedCostUsd.toFixed(6)}</span></div></div><section className="lineage-panel"><div className="lineage-panel-head"><div><h3>Trace lineage</h3><p>Runs in this workflow. Each run is retained separately.</p></div><span>{lineageTraces.length||1} run{(lineageTraces.length||1)===1?'':'s'}</span></div><div className="lineage-list">{(lineageTraces.length?lineageTraces:[trace]).map((item,index)=><article key={item.id} className={'lineage-item'+(item.id===trace.id?' selected':'')}><div className="lineage-index">{index+1}</div><div className="lineage-item-main"><strong>{item.lineage?.parentTraceId?'Variant':'Workflow run'} · {item.id.slice(0,8)}</strong><span>{new Date(item.createdAt).toLocaleString()} · {item.mode.toUpperCase()} · {item.model}</span><p>{item.prompt}</p><small>{item.lineage?.parentTraceId?'Parent: '+item.lineage.parentTraceId.slice(0,8):'Baseline / root run'}{item.lineage?.configFingerprint?' · Config '+item.lineage.configFingerprint:''}</small></div><div className="lineage-item-actions"><button className="ghost" onClick={()=>load(item)}>Open</button><button className="ghost" onClick={()=>toggleCompare(item.id)}>{compareIds.includes(item.id)?'Selected':'Compare'}</button><button className="ghost" onClick={()=>startVariant(item)}>Branch</button><button className="ghost" onClick={()=>addTraceToEvaluation(item)}>Evaluate</button></div></article>)}</div></section><Graph trace={trace}/><Provenance trace={trace}/><QualityGate trace={trace}/><section className="answer-card"><div><div className="eyebrow">OBSERVABLE RESULT</div><h3>Final answer</h3></div><p>{trace.answer}</p></section></>:<EmptyState onRun={()=>run()}/>
    </div>}
 
    {view==='history'&&<section className="history-page">
