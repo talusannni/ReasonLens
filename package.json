@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "test:provenance": "npx --yes tsx scripts/test-provenance-regression.ts",
     "test:quality-gates": "npx --yes tsx scripts/test-quality-gates.ts",
-    "test:evaluation": "npx --yes tsx scripts/test-evaluation.ts"
+    "test:evaluation": "npx --yes tsx scripts/test-evaluation.ts",
+    "test:evidence-diff": "npx --yes tsx scripts/test-evidence-diff.ts"
   },
   "dependencies": {
     "next": "15.5.27",
