@@ -57,7 +57,32 @@ export default function Home(){
  }
  useEffect(()=>{loadPersisted();},[]);
 
- const visibleHistory=useMemo(()=>history.filter(t=>t.prompt.toLowerCase().includes(search.toLowerCase())||t.mode.includes(search.toLowerCase())),[history,search]);
+ const [historyModeFilter,setHistoryModeFilter]=useState('all');
+ const [historyExecutionFilter,setHistoryExecutionFilter]=useState('all');
+ const [historyStatusFilter,setHistoryStatusFilter]=useState('all');
+ const [historyProviderFilter,setHistoryProviderFilter]=useState('all');
+ const [historyModelFilter,setHistoryModelFilter]=useState('all');
+ const [historyTimeFilter,setHistoryTimeFilter]=useState('all');
+ const [historySort,setHistorySort]=useState('newest');
+ const historyProviders=useMemo(()=>Array.from(new Set(history.map(t=>t.provider))).sort(),[history]);
+ const historyModels=useMemo(()=>Array.from(new Set(history.map(t=>t.model))).sort(),[history]);
+ const visibleHistory=useMemo(()=>{
+  const q=search.trim().toLowerCase();
+  const now=Date.now();
+  return history.filter(t=>{
+   const execution=getTraceExecutionInfo(t);
+   const matchesSearch=!q||t.prompt.toLowerCase().includes(q)||t.mode.toLowerCase().includes(q)||t.id.toLowerCase().includes(q)||t.provider.toLowerCase().includes(q)||t.model.toLowerCase().includes(q);
+   const matchesTime=historyTimeFilter==='all'||now-new Date(t.createdAt).getTime()<=Number(historyTimeFilter)*24*60*60*1000;
+   return matchesSearch&&(historyModeFilter==='all'||t.mode===historyModeFilter)&&(historyExecutionFilter==='all'||execution.kind===historyExecutionFilter)&&(historyStatusFilter==='all'||t.status===historyStatusFilter)&&(historyProviderFilter==='all'||t.provider===historyProviderFilter)&&(historyModelFilter==='all'||t.model===historyModelFilter)&&matchesTime;
+  }).sort((a,b)=>{
+   if(historySort==='oldest')return new Date(a.createdAt).getTime()-new Date(b.createdAt).getTime();
+   if(historySort==='latency-desc')return b.metrics.latencyMs-a.metrics.latencyMs;
+   if(historySort==='latency-asc')return a.metrics.latencyMs-b.metrics.latencyMs;
+   if(historySort==='cost-desc')return b.metrics.estimatedCostUsd-a.metrics.estimatedCostUsd;
+   if(historySort==='cost-asc')return a.metrics.estimatedCostUsd-b.metrics.estimatedCostUsd;
+   return new Date(b.createdAt).getTime()-new Date(a.createdAt).getTime();
+  });
+ },[history,search,historyModeFilter,historyExecutionFilter,historyStatusFilter,historyProviderFilter,historyModelFilter,historyTimeFilter,historySort]);
  const compareTraces=useMemo(()=>compareIds.map(id=>history.find(t=>t.id===id)).filter(Boolean) as Trace[],[compareIds,history]);
 
  async function loadEvaluations(){
@@ -137,7 +162,20 @@ export default function Home(){
     {trace?<><div className="trace-header"><div><div className="eyebrow">TRACE {trace.id.slice(0,8)}</div><h3>{trace.mode.toUpperCase()} · {trace.model}</h3><span className={`execution-badge execution-${getTraceExecutionInfo(trace).kind}`} title={getTraceExecutionInfo(trace).detail}>{getTraceExecutionInfo(trace).label}</span></div><div className="metrics"><span>{trace.nodes.length} nodes</span><span>{trace.edges.length} edges</span><span>{trace.metrics.latencyMs} ms</span><span>{trace.metrics.inputTokens+trace.metrics.outputTokens} tokens</span><span>${trace.metrics.estimatedCostUsd.toFixed(6)}</span></div></div><Graph trace={trace}/><Provenance trace={trace}/><QualityGate trace={trace}/><section className="answer-card"><div><div className="eyebrow">OBSERVABLE RESULT</div><h3>Final answer</h3></div><p>{trace.answer}</p></section></>:<EmptyState onRun={()=>run()}/>}
    </div>}
 
-   {view==='history'&&<section className="history-page"><div className="history-tools"><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search traces…"/><span>{loadingHistory?'Loading…':visibleHistory.length+' traces'}</span><div className="history-actions">{connected&&<button className="ghost" onClick={loadPersisted}>Refresh</button>}{connected&&<button className="ghost" onClick={disconnect}>Disconnect</button>}</div></div>{visibleHistory.length===0?<EmptyState onRun={()=>setView('workspace')}/>:<div className="history-list">{visibleHistory.map(t=><div className="history-item" key={t.id}><button className="history-open" onClick={()=>load(t)}><div className="history-main"><strong>{t.prompt}</strong><small>{new Date(t.createdAt).toLocaleString()}</small><span className={`execution-badge execution-${getTraceExecutionInfo(t).kind}`} title={getTraceExecutionInfo(t).detail}>{getTraceExecutionInfo(t).label}</span></div><div className="history-meta"><b>{t.mode}</b><span>{t.nodes.length} nodes</span><span>{t.metrics.latencyMs} ms</span><span>${t.metrics.estimatedCostUsd.toFixed(6)}</span></div></button><label className="compare-check"><input type="checkbox" checked={compareIds.includes(t.id)} onChange={()=>toggleCompare(t.id)}/> Compare</label></div>)}</div>}</section>}
+   {view==='history'&&<section className="history-page">
+    <div className="history-tools"><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search prompt, trace ID, provider, model…" aria-label="Search traces"/><span>{loadingHistory?'Loading…':visibleHistory.length+' of '+history.length+' traces'}</span><div className="history-actions">{compareIds.length>0&&<button className="ghost" onClick={()=>setView('analysis')}>Compare {compareIds.length}</button>}{connected&&<button className="ghost" onClick={loadPersisted}>Refresh</button>}{connected&&<button className="ghost" onClick={disconnect}>Disconnect</button>}</div></div>
+    <div className="history-filters">
+     <label>Execution type<select value={historyExecutionFilter} onChange={e=>setHistoryExecutionFilter(e.target.value)}><option value="all">All execution types</option><option value="retrieval-only">Retrieval only</option><option value="full-pipeline">Pipeline · LLM executed</option><option value="llm-executed">LLM executed</option><option value="partial">Failed / partial</option><option value="no-llm">No LLM request captured</option></select></label>
+     <label>Mode<select value={historyModeFilter} onChange={e=>setHistoryModeFilter(e.target.value)}><option value="all">All modes</option><option value="chat">Chat</option><option value="rag">RAG</option><option value="agent">Agent</option></select></label>
+     <label>Status<select value={historyStatusFilter} onChange={e=>setHistoryStatusFilter(e.target.value)}><option value="all">All statuses</option><option value="completed">Completed</option><option value="failed">Failed</option><option value="running">Running</option></select></label>
+     <label>Provider<select value={historyProviderFilter} onChange={e=>setHistoryProviderFilter(e.target.value)}><option value="all">All providers</option>{historyProviders.map(value=><option key={value} value={value}>{value}</option>)}</select></label>
+     <label>Model<select value={historyModelFilter} onChange={e=>setHistoryModelFilter(e.target.value)}><option value="all">All models</option>{historyModels.map(value=><option key={value} value={value}>{value}</option>)}</select></label>
+     <label>Time range<select value={historyTimeFilter} onChange={e=>setHistoryTimeFilter(e.target.value)}><option value="all">Any time</option><option value="1">Last 24 hours</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option></select></label>
+     <label>Sort by<select value={historySort} onChange={e=>setHistorySort(e.target.value)}><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="latency-desc">Slowest first</option><option value="latency-asc">Fastest first</option><option value="cost-desc">Highest cost</option><option value="cost-asc">Lowest cost</option></select></label>
+     <button className="ghost history-reset" onClick={()=>{setSearch('');setHistoryModeFilter('all');setHistoryExecutionFilter('all');setHistoryStatusFilter('all');setHistoryProviderFilter('all');setHistoryModelFilter('all');setHistoryTimeFilter('all');setHistorySort('newest');}}>Reset filters</button>
+    </div>
+    {visibleHistory.length===0?<div className="empty compact"><div className="empty-icon">⌕</div><h3>No matching traces</h3><p>Change or reset your search and filters.</p><button className="ghost" onClick={()=>{setSearch('');setHistoryModeFilter('all');setHistoryExecutionFilter('all');setHistoryStatusFilter('all');setHistoryProviderFilter('all');setHistoryModelFilter('all');setHistoryTimeFilter('all');}}>Clear filters</button></div>:<div className="trace-table-wrap"><table className="trace-table"><thead><tr><th><span className="sr-only">Compare</span></th><th>Trace / prompt</th><th>Execution type</th><th>Mode</th><th>Status</th><th>Latency</th><th>Cost (USD)</th><th>Created</th><th>Action</th></tr></thead><tbody>{visibleHistory.map(t=>{const info=getTraceExecutionInfo(t);return <tr key={t.id}><td><input type="checkbox" aria-label={'Compare trace '+t.id.slice(0,8)} checked={compareIds.includes(t.id)} onChange={()=>toggleCompare(t.id)}/></td><td className="trace-table-prompt"><button onClick={()=>load(t)} title="Open trace details">{t.prompt}</button><small>{t.id.slice(0,8)} · {t.provider} · {t.model}</small></td><td><span className={'execution-badge execution-'+info.kind} title={info.detail}>{info.label}</span></td><td><span className="table-mode">{t.mode.toUpperCase()}</span></td><td><span className={'trace-status status-'+t.status}>{t.status}</span></td><td className="numeric">{t.metrics.latencyMs.toLocaleString()} ms</td><td className="numeric">${t.metrics.estimatedCostUsd.toFixed(6)}</td><td className="trace-date">{new Date(t.createdAt).toLocaleString()}</td><td><button className="ghost trace-open-action" onClick={()=>load(t)}>Open</button></td></tr>})}</tbody></table></div>}
+   
 
    {view==='analysis'&&<section className="analysis-page">
     <div className="analysis-toolbar"><div><h3>Compare two runs</h3><p>Select two traces from history to identify latency, token and cost differences.</p></div><button className="primary" disabled={compareTraces.length!==2} onClick={()=>setView('analysis')}>{compareTraces.length===2?'Comparison ready':'Select 2 traces'}</button></div>
