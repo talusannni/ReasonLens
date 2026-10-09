@@ -171,6 +171,26 @@ python sdk/python/examples/document_rag.py --retrieval-only --top-k 2
 python sdk/python/examples/document_rag.py --retrieval-only --top-k 4
 ```
 
+For a repeatable batch, run the experiment orchestrator once. It creates a retrieval-only trace for each top-k value, by default 2 and 4:
+
+```powershell
+python sdk/python/examples/run_retrieval_experiments.py
+```
+
+You can choose other positive values, for example:
+
+```powershell
+python sdk/python/examples/run_retrieval_experiments.py --top-k-values 2,4,6
+```
+
+The batch does not call Groq by default. To run a full Groq-backed answer for **one selected configuration** while keeping all other configurations retrieval-only, opt in explicitly:
+
+```powershell
+python sdk/python/examples/run_retrieval_experiments.py --top-k-values 2,4,6 --full-run-top-k 4
+```
+
+That command makes exactly one full-run attempt at top-k 4; top-k 2 and 6 remain retrieval-only. Set `GROQ_API_KEY` only for this opt-in full run. Each configuration produces its own trace for comparison.
+
 Open **Trace history**, select the two newly created traces, and open **Run comparison**. The Evidence diff panel shows which chunks changed between the two retrieval settings. No `GROQ_API_KEY` is needed for retrieval-only mode. The fixture generator writes local sample documents and can overwrite existing fixture files, so run it only when the sample files are missing.
 
 A full end-to-end run uses the same example and current top-k setting but makes a real Groq request:
