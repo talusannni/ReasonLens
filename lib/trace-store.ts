@@ -28,6 +28,7 @@ export interface TraceListPage {
  page:number;
  pageSize:number;
  totalPages:number;
+ familyCounts:Record<string,number>;
 }
 
 export async function saveTrace(trace:Trace):Promise<Trace>{
@@ -95,7 +96,17 @@ export async function listTracePage(options:TraceListOptions):Promise<TraceListP
  // The execution filter is applied in PostgREST when possible. This defensive pass
  // keeps the partial state/status filter consistent if a backend ignores a JSON filter.
  const totalPages=Math.max(1,Math.ceil(total/pageSize));
- return {traces,total,page,pageSize,totalPages};
+ const workflowIds=Array.from(new Set(traces.map(t=>t.lineage?.workflowId||t.id)));
+ const familyCounts:Record<string,number>={};
+ workflowIds.forEach(id=>{familyCounts[id]=0;});
+ if(workflowIds.length){
+  const familyParams=new URLSearchParams({select:'workflow_id',workflow_id:'in.('+workflowIds.join(',')+')',limit:'1000'});
+  const familyRes=await fetch(url+'/rest/v1/reasonlens_traces?'+familyParams.toString(),{headers:headers(key),cache:'no-store'});
+  if(!familyRes.ok)throw new Error('Supabase trace family count failed: '+familyRes.status+' '+await familyRes.text());
+  const familyRows=await familyRes.json();
+  for(const row of familyRows){if(row.workflow_id in familyCounts)familyCounts[row.workflow_id]++;}
+ }
+ return {traces,total,page,pageSize,totalPages,familyCounts};
 }
 
 export async function listTraces():Promise<Trace[]>{
