@@ -138,9 +138,17 @@ export function compareEvidence(baseline: Trace, current: Trace): EvidenceDiffRe
 
 export function getCapturedLlmInput(trace: Trace): string | null {
   const modelNode = trace.nodes.find((node) => node.kind === 'model');
-  if (!modelNode) return null;
-  const messages = modelNode.metadata?.inputMessages;
-  if (Array.isArray(messages)) return JSON.stringify(messages, null, 2);
-  const inputText = modelNode.metadata?.inputText;
-  return typeof inputText === 'string' ? inputText : null;
+  if (modelNode) {
+    const messages = modelNode.metadata?.inputMessages;
+    if (Array.isArray(messages)) return JSON.stringify(messages, null, 2);
+    const inputText = modelNode.metadata?.inputText;
+    if (typeof inputText === 'string') return inputText;
+  }
+  const contextNode = trace.nodes.find((node) =>
+    node.kind === 'analysis' && typeof node.metadata?.contextText === 'string'
+  );
+  if (contextNode) {
+    return `No LLM call was made for this trace. Prepared context follows:\\n\\n${String(contextNode.metadata?.contextText)}`;
+  }
+  return null;
 }
