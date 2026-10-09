@@ -21,6 +21,12 @@ export default function EvidenceComparison({a,b}:{a:Trace;b:Trace}){
  const [showUnchanged,setShowUnchanged]=useState(false);
  const report=useMemo(()=>compareEvidence(a,b),[a,b]);
  const inputA=getCapturedLlmInput(a),inputB=getCapturedLlmInput(b);
+ const contextLabel=(trace:Trace,value:string|null)=>{
+  if(!value)return 'not captured';
+  if(trace.nodes.some(node=>node.kind==='model'))return 'captured from LLM request';
+  if(trace.nodes.some(node=>node.kind==='analysis'&&typeof node.metadata?.contextText==='string'))return 'prepared context · LLM skipped';
+  return 'available';
+ };
  const visible=report.items.filter(item=>showUnchanged||item.kind!=='unchanged');
  return <section className="evidence-comparison">
   <div className="evidence-comparison-head">
@@ -49,10 +55,10 @@ export default function EvidenceComparison({a,b}:{a:Trace;b:Trace}){
    {visible.length===0&&<div className="evidence-diff-empty">No evidence changes detected in the captured traces.</div>}
   </div>
   <div className="evidence-contexts">
-   <div className="evidence-context-title"><h4>Captured LLM input</h4><span>Read-only · no model call</span></div>
+   <div className="evidence-context-title"><h4>LLM input / prepared context</h4><span>Read-only inspection</span></div>
    <div className="evidence-run-pair">
-    <details><summary>Baseline request context {inputA?'(available)':'(not captured)'}</summary><pre>{inputA||'This trace does not include inputMessages or inputText on the model node. Instrument the actual model request to capture the exact context sent.'}</pre></details>
-    <details><summary>Current request context {inputB?'(available)':'(not captured)'}</summary><pre>{inputB||'This trace does not include inputMessages or inputText on the model node. Instrument the actual model request to capture the exact context sent.'}</pre></details>
+    <details><summary>Baseline · {contextLabel(a,inputA)}</summary><pre>{inputA||'This trace does not include inputMessages or inputText on the model node. Instrument the actual model request to capture the exact context sent.'}</pre></details>
+    <details><summary>Current · {contextLabel(b,inputB)}</summary><pre>{inputB||'This trace does not include inputMessages or inputText on the model node. Instrument the actual model request to capture the exact context sent.'}</pre></details>
    </div>
   </div>
  </section>;
