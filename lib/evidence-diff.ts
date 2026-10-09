@@ -148,7 +148,15 @@ export function getCapturedLlmInput(trace: Trace): string | null {
     node.kind === 'analysis' && typeof node.metadata?.contextText === 'string'
   );
   if (contextNode) {
-    return `No LLM call was made for this trace. Prepared context follows:\\n\\n${String(contextNode.metadata?.contextText)}`;
+    return `No LLM call was made for this trace. Prepared context follows:\n\n${String(contextNode.metadata?.contextText)}`;
   }
   return null;
+}
+
+
+export function isRetrievalOnlyTrace(trace: Trace): boolean {
+  return trace.nodes.some((node) =>
+    node.metadata?.replayMode === 'retrieval-only' ||
+    (node.label === 'Retrieval-only replay complete' && node.metadata?.llmCalls === 0)
+  );
 }
