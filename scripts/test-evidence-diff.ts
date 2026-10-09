@@ -9,7 +9,7 @@ function trace(id:string, evidence:Array<{id:string;source:string;page:number;co
   ...evidence.map(item=>({id:item.id,kind:'evidence' as const,label:item.id,detail:item.content,metadata:{source:item.source,page:item.page,rank:item.rank,score:item.score}})),
  ];
  if(options.messages)nodes.push({id:'model-'+id,kind:'model',label:'LLM',detail:'answer',metadata:{inputMessages:options.messages}});
- if(options.contextText)nodes.push({id:'context-'+id,kind:'analysis',label:'LLM context assembly',detail:'assembled',metadata:{contextText:options.contextText}});
+ if(options.contextText)nodes.push({id:'context-'+id,kind:'analysis',label:'LLM context assembly',detail:'assembled',metadata:{contextText:options.contextText,replayMode:'retrieval-only'}});
  const retrievalId='retrieval-'+id;
  const edges:Trace['edges']=evidence.map(item=>({id:'edge-'+id+'-'+item.id,source:retrievalId,target:item.id,kind:'retrieves'}));
  return {id,createdAt:'2026-01-01T00:00:00Z',provider:'mock',model:'test-model',prompt:'Find policy evidence.',mode:'rag',nodes,edges,answer:'answer',status:'completed',metrics:{latencyMs:10,inputTokens:1,outputTokens:2,estimatedCostUsd:0}};
