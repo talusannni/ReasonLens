@@ -235,3 +235,5 @@
 .lineage-item-main{min-width:0}.lineage-item-main strong{display:block;font-size:12px;color:#1e293b}.lineage-item-main>span{display:block;margin-top:4px;font-size:10px;color:#64748b}.lineage-item-main p{font-size:11px;line-height:1.5;color:#334155;overflow-wrap:anywhere;margin:8px 0}.lineage-item-main small{font-size:9px;color:#64748b;overflow-wrap:anywhere}
 .lineage-item-actions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}.lineage-item-actions .ghost{padding:6px 8px;font-size:10px}
 @media(max-width:760px){.lineage-item{grid-template-columns:25px minmax(0,1fr)}.lineage-item-actions{grid-column:2;justify-content:flex-start}.lineage-pending{align-items:flex-start;flex-direction:column}}
+
+.trace-lineage-cell{white-space:nowrap}.trace-lineage-cell .ghost{padding:5px 7px;font-size:9px}
