@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { dashboardAuthorized } from '../../../../../lib/dashboard-auth';
-import { listTraceLineage } from '../../../../../lib/trace-store';
+import { dashboardAuthorized } from '../../../../../../lib/dashboard-auth';
+import { listTraceLineage } from '../../../../../../lib/trace-store';
 
-export async function GET(req:Request,context:{params:Promise<{id:string}>|{id:string}}){
+export async function GET(req:Request,context:{params:Promise<{id:string}>}){
  if(!dashboardAuthorized(req))return NextResponse.json({error:'Dashboard authentication required'},{status:401});
  try{
   const params=await context.params;
