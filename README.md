@@ -216,3 +216,33 @@ python sdk/python/examples/provenance_regression_demo.py
 ```
 
 Then open **Trace history**, select the two newest traces with **Compare**, and inspect **RAG Regression Analysis**. ReasonLens should identify the supported → contradicted transition and the provenance score drop.
+
+
+## Evaluation regression gates
+
+ReasonLens can compare two saved evaluation runs and report whether the current run regressed against a baseline. In the dashboard, open **Evaluations**, select the baseline run first and the current run second, then review the **Baseline vs current regression gate** report. Export either run as JSON from the evaluation history to use the same gate in a release script or CI job.
+
+Default policy:
+- Fail if evaluation pass rate drops at all.
+- Fail if average provenance score drops by more than 5 points.
+- Fail if any matched case degrades in status.
+- Fail if the current run has missing evaluation cases.
+- Warn if average latency or total estimated cost rises by more than 25%.
+
+Run the gate locally after exporting both JSON files:
+
+```powershell
+npx tsx scripts/check-evaluation-regression.ts .\baseline.json .\current.json
+```
+
+Exit codes: `0` means PASS or WARN; `1` means a blocking regression; `2` means invalid input or an execution error. Thresholds can be adjusted with environment variables:
+
+```powershell
+$env:REASONLENS_MAX_PASS_RATE_DROP="0"
+$env:REASONLENS_MAX_PROVENANCE_DROP="5"
+$env:REASONLENS_MAX_LATENCY_INCREASE_PERCENT="25"
+$env:REASONLENS_MAX_COST_INCREASE_PERCENT="25"
+npx tsx scripts/check-evaluation-regression.ts .\baseline.json .\current.json
+```
+
+The gate compares captured evaluation results; it does not invoke a model or rerun the application. A release pipeline should create the current evaluation run first, export or fetch the stored baseline/current JSON, then execute this command and treat exit code 1 as a release blocker. Latency and cost thresholds are warnings by default.
