@@ -1,6 +1,7 @@
 'use client';
 import type {Trace} from '../lib/types';
 import {compareProvenance,type ProvenanceClaimDiff} from '../lib/provenance-regression';
+import {isRetrievalOnlyTrace} from '../lib/evidence-diff';
 function Diff({item}:{item:ProvenanceClaimDiff}){
  const claim=item.claimB||item.claimA||item.key;
  return <article className={"provenance-diff "+item.kind}>
@@ -10,6 +11,12 @@ function Diff({item}:{item:ProvenanceClaimDiff}){
  </article>;
 }
 export default function ProvenanceComparison({a,b}:{a:Trace;b:Trace}){
+ if(isRetrievalOnlyTrace(a)||isRetrievalOnlyTrace(b)){
+  return <section className="provenance-comparison not-evaluated">
+   <div className="provenance-comparison-head"><div><div className="eyebrow">RAG REGRESSION ANALYSIS</div><h3>Claim provenance not evaluated</h3><p>At least one run intentionally stopped before LLM generation. With no generated claims or answer, claim-level provenance deltas would be misleading.</p></div></div>
+   <div className="provenance-empty">Use the Evidence diff below to inspect added, removed, and changed retrieval results. Run two full pipeline traces to compare claim support and answer provenance.</div>
+  </section>;
+ }
  const report=compareProvenance(a,b),direction=report.scoreDelta>0?'improved':report.scoreDelta<0?'regressed':'unchanged';
  return <section className="provenance-comparison">
   <div className="provenance-comparison-head"><div><div className="eyebrow">RAG REGRESSION ANALYSIS</div><h3>Provenance changes</h3><p>Compares explicit claims, evidence and contradictions between the two observable traces.</p></div><div className={"regression-score "+direction}><strong>{report.scoreDelta>0?'+':''}{report.scoreDelta}</strong><span>provenance score</span></div></div>
