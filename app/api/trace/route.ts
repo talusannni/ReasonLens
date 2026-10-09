@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createHash, randomUUID } from 'crypto';
+import { createHash } from 'crypto';
 import { runTrace } from '../../../lib/provider';
 import { getTrace, saveTrace } from '../../../lib/trace-store';
 import type { TraceMode } from '../../../lib/types';
