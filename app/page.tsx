@@ -65,7 +65,7 @@ export default function Home(){
   finally{setLoadingHistory(false);}
  }
  useEffect(()=>{loadPersisted();},[]);
- useEffect(()=>{if(!connected||!trace){setLineageTraces([]);return;}let active=true;fetch('/api/dashboard/traces/'+encodeURIComponent(trace.id)+'/lineage',{cache:'no-store'}).then(async r=>{const d=await r.json();if(active&&r.ok)setLineageTraces(Array.isArray(d.traces)?d.traces:[]);}).catch(()=>{if(active)setLineageTraces([]);});return()=>{active=false;};},[connected,trace?.id]);
+ useEffect(()=>{if(!connected||!trace){setLineageTraces([]);return;}let active=true;fetch('/api/dashboard/trace-lineage?traceId='+encodeURIComponent(trace.id),{cache:'no-store'}).then(async r=>{const d=await r.json();if(active&&r.ok)setLineageTraces(Array.isArray(d.traces)?d.traces:[]);}).catch(()=>{if(active)setLineageTraces([]);});return()=>{active=false;};},[connected,trace?.id]);
 
  const [historyModeFilter,setHistoryModeFilter]=useState('all');
  const [historyExecutionFilter,setHistoryExecutionFilter]=useState('all');
