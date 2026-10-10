@@ -1,11 +1,26 @@
 import assert from 'node:assert/strict';
 import {constantTimeSecretEquals,readJsonBody} from '../lib/api-security';
+import {createDashboardSession,dashboardWorkspaceId} from '../lib/dashboard-auth';
+import {DEFAULT_WORKSPACE_ID,resolveWorkspaceForCredential} from '../lib/workspace-auth';
 
 async function main(){
  assert.equal(constantTimeSecretEquals('secret','secret'),true,'matching secrets should pass');
  assert.equal(constantTimeSecretEquals('secret','wrong'),false,'different secrets should fail');
  assert.equal(constantTimeSecretEquals(undefined,'secret'),false,'missing configured secret should fail closed');
  assert.equal(constantTimeSecretEquals('secret',undefined),false,'missing supplied secret should fail closed');
+
+ const previousSessionSecret=process.env.REASONLENS_SESSION_SECRET;
+ process.env.REASONLENS_SESSION_SECRET='workspace-session-test-secret';
+ const session=createDashboardSession(DEFAULT_WORKSPACE_ID);
+ assert.equal(dashboardWorkspaceId(new Request('https://reasonlens.test',{headers:{cookie:'reasonlens_dashboard='+session}})),DEFAULT_WORKSPACE_ID,'valid workspace session should resolve its workspace');
+ assert.equal(dashboardWorkspaceId(new Request('https://reasonlens.test',{headers:{cookie:'reasonlens_dashboard='+DEFAULT_WORKSPACE_ID+'.invalid'}})),null,'invalid workspace session signature should fail closed');
+ if(previousSessionSecret===undefined)delete process.env.REASONLENS_SESSION_SECRET;else process.env.REASONLENS_SESSION_SECRET=previousSessionSecret;
+
+ const previousIngestKey=process.env.REASONLENS_INGEST_KEY;
+ process.env.REASONLENS_INGEST_KEY='legacy-workspace-test-key';
+ assert.equal(await resolveWorkspaceForCredential('legacy-workspace-test-key'),DEFAULT_WORKSPACE_ID,'legacy ingestion credential should map to the default workspace');
+ assert.equal(await resolveWorkspaceForCredential('not-a-valid-workspace-key'),null,'unknown workspace credentials should fail closed when persistence is not configured');
+ if(previousIngestKey===undefined)delete process.env.REASONLENS_INGEST_KEY;else process.env.REASONLENS_INGEST_KEY=previousIngestKey;
 
  const valid=await readJsonBody(new Request('https://reasonlens.test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ok:true})}));
  assert.equal(valid.ok,true,'valid JSON should parse');
