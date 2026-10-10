@@ -115,6 +115,19 @@ The generated key is printed once. Store it securely and send it as `Authorizati
 
 Dashboard sign-in accepts the same workspace API key and issues a signed, HTTP-only session scoped to that workspace. Sessions have a server-validated seven-day expiry. Previously issued dashboard cookies without a verifiable expiry are rejected; sign in again after deployment. This is still an incremental multi-workspace foundation, not a complete hosted SaaS: key-management UI, rate limits/quotas, workspace administration, audit/retention controls, and end-to-end tenant-isolation tests remain release requirements.
 
+### Team account authentication (incremental)
+
+The dashboard now includes email/password signup and sign-in through Supabase Auth. Signup provisions a workspace and an initial `owner` membership; team sessions are signed, HTTP-only cookies and each dashboard API request rechecks that the user is still an active member of the workspace. The existing workspace API-key login remains available for integrations and migration compatibility.
+
+Configure these server environment variables in addition to the existing Supabase settings:
+
+```env
+SUPABASE_ANON_KEY=<Supabase project's anon/publishable key>
+REASONLENS_SESSION_SECRET=<long random secret used to sign dashboard sessions>
+```
+
+The anon key is used only for Supabase Auth requests from server routes; the service-role key remains server-only. If email confirmation is enabled in Supabase Auth, a new user must confirm their address before signing in. The first implementation selects the user's earliest active workspace at login; workspace switching, invitations, member/role management UI, account recovery, quotas/billing, and tenant-isolation tests are not yet complete. Do not market this as a fully production-ready SaaS until those release requirements and runtime tests are completed.
+
 ## Important boundary
 
 ReasonLens does not attempt to expose hidden model chain-of-thought. It displays structured traces, evidence, tool execution, claims and decisions that can be intentionally produced and reviewed.
