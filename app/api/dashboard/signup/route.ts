@@ -15,18 +15,23 @@ export async function POST(req:Request){
   return NextResponse.json({error:'Provide a valid email, password (8–128 characters), and optional workspace name (up to 80 characters).'}, {status:400});
  }
  try{
-  const identity=await signUpWithPassword(body.email.trim().toLowerCase(),body.password);
-  if(!identity)return NextResponse.json({error:'Could not create account. The email may already be registered or Supabase Auth rejected the request.'},{status:400});
+  const result=await signUpWithPassword(body.email.trim().toLowerCase(),body.password);
+  if(result.kind==='rate_limited'){
+   return NextResponse.json({error:'Too many signup attempts. Wait a while before trying again. If this continues, check Supabase Auth rate limits.'},{status:429,headers:{'Cache-Control':'no-store','Retry-After':'300'}});
+  }
+  if(result.kind==='rejected'){
+   return NextResponse.json({error:'Supabase Auth rejected signup. Check the email address, password requirements, and Auth settings before retrying.'},{status:400});
+  }
   const workspaceName=typeof body.workspaceName==='string'&&body.workspaceName.trim()?body.workspaceName.trim():'Personal workspace';
-  const workspaceId=await createWorkspaceForUser(identity.userId,workspaceName);
+  const workspaceId=await createWorkspaceForUser(result.userId,workspaceName);
   if(!workspaceId)return NextResponse.json({error:'Account created, but workspace provisioning failed. Contact support before retrying signup.'},{status:503});
   const response=NextResponse.json({
    ok:true,
-   workspaceId:identity.sessionReady?workspaceId:undefined,
-   needsEmailConfirmation:!identity.sessionReady
+   workspaceId:result.sessionReady?workspaceId:undefined,
+   needsEmailConfirmation:!result.sessionReady
   },{status:201,headers:{'Cache-Control':'no-store'}});
-  if(identity.sessionReady){
-   response.cookies.set('reasonlens_team_session',createTeamDashboardSession(workspaceId,identity.userId),{
+  if(result.sessionReady){
+   response.cookies.set('reasonlens_team_session',createTeamDashboardSession(workspaceId,result.userId),{
     httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'strict',path:'/',maxAge:SESSION_MAX_AGE
    });
    response.cookies.set('reasonlens_dashboard','',{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'strict',path:'/',maxAge:0});
