@@ -1,10 +1,12 @@
 import {NextResponse} from 'next/server';
 import {saveTrace,listTraces} from '../../../lib/trace-store';
-import {constantTimeSecretEquals,readJsonBody} from '../../../lib/api-security';
+import {readJsonBody} from '../../../lib/api-security';
+import {resolveWorkspaceForCredential} from '../../../lib/workspace-auth';
 import type {Trace} from '../../../lib/types';
 
-function authorized(req:Request):boolean{
- return constantTimeSecretEquals(process.env.REASONLENS_INGEST_KEY,req.headers.get('authorization')?.replace(/^Bearer\s+/i,''));
+async function authorized(req:Request):Promise<string|null>{
+ const credential=req.headers.get('authorization')?.replace(/^Bearer\s+/i,'').trim();
+ return resolveWorkspaceForCredential(credential);
 }
 
 function validTrace(value:unknown):value is Trace{
@@ -27,18 +29,20 @@ function validTrace(value:unknown):value is Trace{
 }
 
 export async function GET(req:Request){
- if(!authorized(req))return NextResponse.json({error:'Unauthorized'},{status:401});
- try{return NextResponse.json({traces:await listTraces()},{headers:{'Cache-Control':'no-store'}});}
+ const workspaceId=await authorized(req);
+ if(!workspaceId)return NextResponse.json({error:'Unauthorized'},{status:401});
+ try{return NextResponse.json({traces:await listTraces(workspaceId)},{headers:{'Cache-Control':'no-store'}});}
  catch{return NextResponse.json({error:'Trace store unavailable'},{status:503});}
 }
 
 export async function POST(req:Request){
- if(!authorized(req))return NextResponse.json({error:'Unauthorized'},{status:401});
+ const workspaceId=await authorized(req);
+ if(!workspaceId)return NextResponse.json({error:'Unauthorized'},{status:401});
  const parsed=await readJsonBody(req,1024*1024);
  if(!parsed.ok)return NextResponse.json({error:parsed.error},{status:parsed.status});
  if(!validTrace(parsed.value))return NextResponse.json({error:'Invalid trace payload'},{status:400});
  try{
-  await saveTrace(parsed.value);
+  await saveTrace(parsed.value,workspaceId);
   return NextResponse.json({id:parsed.value.id,status:'accepted'},{status:202});
  }catch{
   return NextResponse.json({error:'Trace store unavailable'},{status:503});
