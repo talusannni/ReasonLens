@@ -38,8 +38,8 @@ async function main(){
   }else if(table==='reasonlens_evaluation_runs'&&requestedWorkspace===workspaceA){
    rows=[evaluationA].filter(row=>(!id||row.id===id));
   }
-  const rangeHeaders=table==='reasonlens_traces'&&parsed.searchParams.has('order')
-   ?{'Content-Range':`0-${Math.max(0,rows.length-1)}/${rows.length}`}:{};
+  const rangeHeaders:Record<string,string>={};
+  if(table==='reasonlens_traces'&&parsed.searchParams.has('order'))rangeHeaders['Content-Range']=`0-${Math.max(0,rows.length-1)}/${rows.length}`;
   return new Response(JSON.stringify(rows),{status:200,headers:{'Content-Type':'application/json',...rangeHeaders}});
  }) as typeof fetch;
 
