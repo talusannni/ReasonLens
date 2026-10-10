@@ -21,6 +21,15 @@ ReasonLens is a model-agnostic, local-first visual debugger for AI systems. It f
 - Responsive desktop/mobile UI
 - GitHub Actions typecheck/build validation
 
+## Public site and account access
+
+- `/` is the public product landing page describing trace exploration, evidence provenance, comparisons, and evaluations.
+- `/demo` is an interactive, static sample trace tour for chat, RAG, and agent workflows. Its sample records are illustrative and do not call a model.
+- `/login` is the dedicated email/password sign-in and account-creation page.
+- `/workspace` is the authenticated trace explorer. Requests without a valid workspace session are redirected to sign-in.
+
+New signups create a workspace and owner membership. If account creation succeeds but workspace provisioning fails, the user should sign in with that account; the sign-in flow attempts to find or provision an active workspace rather than requiring another signup. Workspace provisioning and tenant-isolation behavior must be validated in Preview before merging authentication changes.
+
 ## Run
 
 ```bash
@@ -114,6 +123,19 @@ npm run workspace:create-key -- --slug acme-team --name "Acme Team"
 The generated key is printed once. Store it securely and send it as `Authorization: Bearer <key>` to the trace ingestion API. Never commit the generated key or service-role credential.
 
 Dashboard sign-in accepts the same workspace API key and issues a signed, HTTP-only session scoped to that workspace. Sessions have a server-validated seven-day expiry. Previously issued dashboard cookies without a verifiable expiry are rejected; sign in again after deployment. This is still an incremental multi-workspace foundation, not a complete hosted SaaS: key-management UI, rate limits/quotas, workspace administration, audit/retention controls, and end-to-end tenant-isolation tests remain release requirements.
+
+### Team account authentication (incremental)
+
+The dashboard now includes email/password signup and sign-in through Supabase Auth. Signup provisions a workspace and an initial `owner` membership; team sessions are signed, HTTP-only cookies and each dashboard API request rechecks that the user is still an active member of the workspace. The existing workspace API-key login remains available for integrations and migration compatibility.
+
+Configure these server environment variables in addition to the existing Supabase settings:
+
+```env
+SUPABASE_ANON_KEY=<Supabase project's anon/publishable key>
+REASONLENS_SESSION_SECRET=<long random secret used to sign dashboard sessions>
+```
+
+The anon key is used only for Supabase Auth requests from server routes; the service-role key remains server-only. If email confirmation is enabled in Supabase Auth, a new user must confirm their address before signing in. The first implementation selects the user's earliest active workspace at login; workspace switching, invitations, member/role management UI, account recovery, quotas/billing, and tenant-isolation tests are not yet complete. Do not market this as a fully production-ready SaaS until those release requirements and runtime tests are completed.
 
 ## Important boundary
 
@@ -257,7 +279,7 @@ Run the deterministic experiment-analysis tests:
 npm run test:experiment-analysis
 ```
 
-The migration `supabase/migrations/202610090002_normalize_experiment_groups.sql` normalizes existing variants so each workflow shares one experiment ID. It has been applied to the production Supabase project; the migration remains in source control for reproducibility.
+The migration `supabase/migrations/20261009151203_normalize_trace_experiment_groups.sql` normalizes existing variants so each workflow shares one experiment ID. It has been applied to the production Supabase project; the migration remains in source control for reproducibility.
 
 ## License
 
@@ -310,7 +332,7 @@ The gate compares captured evaluation results; it does not invoke a model or rer
 
 Each execution is stored as a separate trace. The dashboard can link a new run to a parent trace using **Run variant from this trace**; change the prompt or settings before executing to create an experiment branch. The trace history labels the workflow root or variant, and the workspace lineage panel shows sibling runs, parent IDs, configuration fingerprints, and quick actions to open, compare, branch, or pin a trace into the evaluation dataset.
 
-Lineage metadata is stored in `workflow_id`, `parent_trace_id`, `experiment_id`, and `config_fingerprint` on `public.reasonlens_traces`. Existing traces are backfilled as workflow roots by the migration `supabase/migrations/202610090001_add_trace_lineage.sql`. The deployed Supabase project has this migration applied.
+Lineage metadata is stored in `workflow_id`, `parent_trace_id`, `experiment_id`, and `config_fingerprint` on `public.reasonlens_traces`. Existing traces are backfilled as workflow roots by the migration `supabase/migrations/20261009133322_add_reasonlens_trace_lineage.sql`. The deployed Supabase project has this migration applied.
 
 - **Compare** selects lineage traces for the existing run comparison view.
 - **Evaluate** pins a trace to the evaluation dataset; pinned trace IDs are fetched directly so older traces are not missed by the default history window.

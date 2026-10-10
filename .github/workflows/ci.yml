@@ -33,4 +33,5 @@ jobs:
       - run: npm run test:evidence-diff
       - run: npm run test:trace-execution
       - run: npm run test:api-security
+      - run: npm run test:workspace-isolation
       - run: npm run build

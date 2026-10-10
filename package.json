@@ -15,6 +15,7 @@
     "test:evaluation-regression": "npx --yes tsx scripts/test-evaluation-regression.ts",
     "test:experiment-analysis": "npx --yes tsx scripts/test-experiment-analysis.ts",
     "test:api-security": "npx --yes tsx scripts/test-api-security.ts",
+    "test:workspace-isolation": "npx --yes tsx scripts/test-workspace-isolation.ts",
     "smoke:production": "node scripts/smoke-production.mjs",
     "workspace:create-key": "node scripts/create-workspace-api-key.mjs"
   },

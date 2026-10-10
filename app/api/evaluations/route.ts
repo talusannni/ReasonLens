@@ -3,18 +3,18 @@ import {randomUUID} from 'crypto';
 import {CORE_RAG_DATASET,evaluateDataset} from '../../../lib/evaluation';
 import {saveEvaluationRun,listEvaluationRuns} from '../../../lib/evaluation-store';
 import {getTrace,listTraces} from '../../../lib/trace-store';
-import {dashboardWorkspaceId} from '../../../lib/dashboard-auth';
+import {resolveDashboardWorkspaceId} from '../../../lib/dashboard-auth';
 import {readJsonBody} from '../../../lib/api-security';
 import type {Trace} from '../../../lib/types';
 
 export async function GET(req:Request){
- const workspaceId=dashboardWorkspaceId(req);
+ const workspaceId=await resolveDashboardWorkspaceId(req);
  if(!workspaceId)return NextResponse.json({error:'Dashboard authentication required'},{status:401});
  try{return NextResponse.json({runs:await listEvaluationRuns(workspaceId)},{headers:{'Cache-Control':'no-store'}});}
  catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Evaluation store unavailable'},{status:503});}
 }
 export async function POST(req:Request){
- const workspaceId=dashboardWorkspaceId(req);
+ const workspaceId=await resolveDashboardWorkspaceId(req);
  if(!workspaceId)return NextResponse.json({error:'Dashboard authentication required'},{status:401});
  const parsed=await readJsonBody(req,256*1024);
  if(!parsed.ok)return NextResponse.json({error:parsed.error},{status:parsed.status});
