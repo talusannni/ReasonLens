@@ -1,6 +1,6 @@
 import {randomUUID} from 'node:crypto';
 
-type AuthUser={id?:string;email?:string};
+type AuthUser={id?:string;email?:string;identities?:unknown[]};
 type SupabaseAuthResponse={access_token?:string;user?:AuthUser;id?:string;email?:string;msg?:string;message?:string;error_description?:string;error?:string};
 
 function config(){
@@ -37,7 +37,7 @@ export async function signUpWithPassword(email:string,password:string):Promise<{
  const data=await responseJson(response) as SupabaseAuthResponse;
  if(!response.ok)return null;
  const user=authUser(data);
- if(!user)return null;
+ if(!user||(Array.isArray(user.identities)&&user.identities.length===0))return null;
  return {userId:user.id!,sessionReady:typeof data.access_token==='string'&&data.access_token.length>0};
 }
 
