@@ -113,7 +113,7 @@ npm run workspace:create-key -- --slug acme-team --name "Acme Team"
 
 The generated key is printed once. Store it securely and send it as `Authorization: Bearer <key>` to the trace ingestion API. Never commit the generated key or service-role credential.
 
-This is an incremental backend boundary, not a claim of complete multi-tenant SaaS readiness. Dashboard sign-in and every customer-facing workflow must be verified as workspace-scoped before onboarding unrelated customers.
+Dashboard sign-in accepts the same workspace API key and issues a signed, HTTP-only session scoped to that workspace. Existing sessions issued before this change remain scoped to the default workspace until they expire. This is still an incremental multi-workspace foundation, not a complete hosted SaaS: key-management UI, rate limits/quotas, workspace administration, audit/retention controls, and end-to-end tenant-isolation tests remain release requirements.
 
 ## Important boundary
 
@@ -151,7 +151,7 @@ Run the local request-guard tests with:
 npm run test:api-security
 ```
 
-This is a single-workspace deployment, not a multi-tenant SaaS boundary. Do not expose one shared dashboard credential to unrelated customers; tenant isolation and per-project credentials must be implemented before offering public multi-tenant hosting.
+The trace and evaluation APIs now apply workspace scoping and support per-workspace bearer credentials. Do not market the deployment as fully production-ready multi-tenant SaaS until the remaining controls described above are implemented and tenant-isolation tests pass.
 
 ## Quality gate checks
 
