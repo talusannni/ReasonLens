@@ -295,3 +295,5 @@
 .trace-tab-panel>.answer-card{margin-top:0}
 .trace-tab-panel>.graph-layout{margin-top:0}
 @media(max-width:600px){.trace-tabs{gap:3px;padding:3px}.trace-tabs button{padding:9px 7px}.trace-tabs button strong{font-size:11px}.trace-tabs button small{font-size:9px}}
+
+.trace-local-note{font-size:11px;color:#64748b;line-height:1.5}
