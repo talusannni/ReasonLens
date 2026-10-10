@@ -17,7 +17,8 @@ export async function POST(req:Request){
  if(prompt.length>12000)return NextResponse.json({error:'prompt must be 12000 characters or fewer'},{status:413});
  const provider=body.provider===undefined?'mock':body.provider;
  if(provider!=='mock'&&provider!=='groq')return NextResponse.json({error:'provider must be mock or groq'},{status:400});
- if(provider==='groq'&&process.env.NODE_ENV==='production'&&!dashboardAuthorized(req)){
+ const persistTrace=dashboardAuthorized(req);
+ if(provider==='groq'&&process.env.NODE_ENV==='production'&&!persistTrace){
   return NextResponse.json({error:'Connect to the ReasonLens dashboard before using the hosted Groq provider'},{status:401});
  }
  if(body.model!==undefined&&(typeof body.model!=='string'||body.model.length>200)){
@@ -28,6 +29,7 @@ export async function POST(req:Request){
  if(requestedParent&&!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestedParent)){
   return NextResponse.json({error:'parentTraceId must be a valid trace UUID'},{status:400});
  }
+ if(requestedParent&&!persistTrace)return NextResponse.json({error:'Connect to the ReasonLens dashboard to create a persisted variant'},{status:401});
  try{
   const parent=requestedParent?await getTrace(requestedParent):undefined;
   if(requestedParent&&!parent)return NextResponse.json({error:'Parent trace not found'},{status:404});
@@ -38,7 +40,7 @@ export async function POST(req:Request){
    ...(parent?{parentTraceId:parent.id,experimentId:parent.lineage?.workflowId||parent.id}:{}),
    configFingerprint
   };
-  await saveTrace(trace);
+  if(persistTrace)await saveTrace(trace);
   return NextResponse.json(trace,{headers:{'Cache-Control':'no-store'}});
  }catch(e){
   return NextResponse.json({error:e instanceof Error?e.message:'Trace execution failed'},{status:503});
