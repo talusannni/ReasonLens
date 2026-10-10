@@ -115,6 +115,28 @@ ReasonLens does not attempt to expose hidden model chain-of-thought. It displays
 - Quality gates for provenance, contradictions, unsupported claims, latency and cost
 - Persistent multi-user trace storage
 
+## Production safety checks
+
+The public health endpoint is `GET /api/health`. It reports service liveness only and does not expose environment-variable or database credentials.
+
+Before shipping a deployment, run the non-destructive smoke suite:
+
+```bash
+npm run smoke:production
+```
+
+By default it checks `https://reasonlens.vercel.app`. To check a staging or self-hosted deployment, set `REASONLENS_BASE_URL` to that base URL. The smoke suite does not create or mutate traces.
+
+The API rejects oversized JSON payloads, validates trace shape and numeric metrics, and returns client errors for malformed requests. In production, the hosted Groq execution path requires an authenticated ReasonLens dashboard session; the no-key demo path remains available. Keep `SUPABASE_SERVICE_ROLE_KEY`, `GROQ_API_KEY`, and `REASONLENS_INGEST_KEY` server-side only.
+
+Run the local request-guard tests with:
+
+```bash
+npm run test:api-security
+```
+
+This is a single-workspace deployment, not a multi-tenant SaaS boundary. Do not expose one shared dashboard credential to unrelated customers; tenant isolation and per-project credentials must be implemented before offering public multi-tenant hosting.
+
 ## Quality gate checks
 
 Run the deterministic quality-gate test suite:
