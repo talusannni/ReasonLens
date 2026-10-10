@@ -14,6 +14,8 @@ async function main(){
  const session=createDashboardSession(DEFAULT_WORKSPACE_ID);
  assert.equal(dashboardWorkspaceId(new Request('https://reasonlens.test',{headers:{cookie:'reasonlens_dashboard='+session}})),DEFAULT_WORKSPACE_ID,'valid workspace session should resolve its workspace');
  assert.equal(dashboardWorkspaceId(new Request('https://reasonlens.test',{headers:{cookie:'reasonlens_dashboard='+DEFAULT_WORKSPACE_ID+'.invalid'}})),null,'invalid workspace session signature should fail closed');
+ const expiredSession=createDashboardSession(DEFAULT_WORKSPACE_ID,-1);
+ assert.equal(dashboardWorkspaceId(new Request('https://reasonlens.test',{headers:{cookie:'reasonlens_dashboard='+expiredSession}})),null,'expired workspace session should fail closed');
  if(previousSessionSecret===undefined)delete process.env.REASONLENS_SESSION_SECRET;else process.env.REASONLENS_SESSION_SECRET=previousSessionSecret;
 
  const previousIngestKey=process.env.REASONLENS_INGEST_KEY;
