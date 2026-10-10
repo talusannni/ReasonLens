@@ -25,6 +25,8 @@ async function main(){
  delete process.env.SUPABASE_URL;
  delete process.env.SUPABASE_SERVICE_ROLE_KEY;
  assert.equal(await resolveWorkspaceForCredential('legacy-workspace-test-key'),DEFAULT_WORKSPACE_ID,'legacy ingestion credential should map to the default workspace');
+ delete process.env.SUPABASE_URL;
+ delete process.env.SUPABASE_SERVICE_ROLE_KEY;
  assert.equal(await resolveWorkspaceForCredential('not-a-valid-workspace-key'),null,'unknown workspace credentials should fail closed without persistence configuration');
  if(previousIngestKey===undefined)delete process.env.REASONLENS_INGEST_KEY;else process.env.REASONLENS_INGEST_KEY=previousIngestKey;
  if(previousSupabaseUrl===undefined)delete process.env.SUPABASE_URL;else process.env.SUPABASE_URL=previousSupabaseUrl;
