@@ -2,6 +2,10 @@ import {randomUUID} from 'node:crypto';
 
 type AuthUser={id?:string;email?:string;identities?:unknown[]};
 type SupabaseAuthResponse={access_token?:string;user?:AuthUser;id?:string;email?:string;msg?:string;message?:string;error_description?:string;error?:string;code?:string};
+export type SignUpResult=
+ | {kind:'ok';userId:string;sessionReady:boolean}
+ | {kind:'rate_limited'}
+ | {kind:'rejected'};
 
 function config(){
  const url=process.env.SUPABASE_URL?.replace(/\/$/,'');
@@ -33,7 +37,7 @@ export async function signInWithPassword(email:string,password:string):Promise<{
  return {userId:authUser(data)!.id!};
 }
 
-export async function signUpWithPassword(email:string,password:string):Promise<{userId:string;sessionReady:boolean}|null>{
+export async function signUpWithPassword(email:string,password:string):Promise<SignUpResult>{
  const {url,anonKey}=config();
  const response=await fetch(url+'/auth/v1/signup',{
   method:'POST',headers:serviceHeaders(anonKey),body:JSON.stringify({email,password}),cache:'no-store'
@@ -41,14 +45,14 @@ export async function signUpWithPassword(email:string,password:string):Promise<{
  const data=await responseJson(response) as SupabaseAuthResponse;
  if(!response.ok){
   console.error('[ReasonLens signup] supabase_auth_rejected',JSON.stringify({status:response.status,code:safeErrorCode(data)}));
-  return null;
+  return response.status===429?{kind:'rate_limited'}:{kind:'rejected'};
  }
  const user=authUser(data);
  if(!user||(Array.isArray(user.identities)&&user.identities.length===0)){
   console.error('[ReasonLens signup] supabase_auth_missing_user',JSON.stringify({status:response.status,code:safeErrorCode(data),hasUser:!!user,identityCount:Array.isArray(user?.identities)?user.identities.length:null}));
-  return null;
+  return {kind:'rejected'};
  }
- return {userId:user.id!,sessionReady:typeof data.access_token==='string'&&data.access_token.length>0};
+ return {kind:'ok',userId:user.id!,sessionReady:typeof data.access_token==='string'&&data.access_token.length>0};
 }
 
 export async function createWorkspaceForUser(userId:string,workspaceName:string):Promise<string|null>{
