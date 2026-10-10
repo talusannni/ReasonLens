@@ -1,7 +1,7 @@
 import {NextResponse} from 'next/server';
 import {readJsonBody} from '../../../../lib/api-security';
 import {createTeamDashboardSession} from '../../../../lib/dashboard-auth';
-import {firstActiveWorkspaceForUser,signInWithPassword} from '../../../../lib/team-auth-service';
+import {createWorkspaceForUser,firstActiveWorkspaceForUser,signInWithPassword} from '../../../../lib/team-auth-service';
 
 const SESSION_MAX_AGE=60*60*24*7;
 function setSession(response:ReturnType<typeof NextResponse.json>,workspaceId:string,userId:string){
@@ -23,8 +23,9 @@ export async function POST(req:Request){
  try{
   const identity=await signInWithPassword(body.email.trim().toLowerCase(),body.password);
   if(!identity)return NextResponse.json({error:'Invalid email or password.'},{status:401});
-  const workspaceId=await firstActiveWorkspaceForUser(identity.userId);
-  if(!workspaceId)return NextResponse.json({error:'This account is not assigned to an active workspace.'},{status:403});
+  let workspaceId=await firstActiveWorkspaceForUser(identity.userId);
+  if(!workspaceId)workspaceId=await createWorkspaceForUser(identity.userId,'Personal workspace');
+  if(!workspaceId)return NextResponse.json({error:'Could not provision an active workspace for this account.'},{status:503});
   return setSession(NextResponse.json({ok:true,workspaceId},{headers:{'Cache-Control':'no-store'}}),workspaceId,identity.userId);
  }catch(e){
   return NextResponse.json({error:e instanceof Error&&e.message==='Supabase Auth is not configured'?'Team authentication is not configured.':'Authentication service unavailable.'},{status:503});
