@@ -1,18 +1,19 @@
 import {NextResponse} from 'next/server';
 import {getTrace} from '../../../../lib/trace-store';
+import {constantTimeSecretEquals} from '../../../../lib/api-security';
 
 function authorized(req:Request):boolean{
- const expected=process.env.REASONLENS_INGEST_KEY;
- if(!expected)return false;
- const supplied=req.headers.get('authorization')?.replace(/^Bearer\s+/i,'');
- return supplied===expected;
+ return constantTimeSecretEquals(process.env.REASONLENS_INGEST_KEY,req.headers.get('authorization')?.replace(/^Bearer\s+/i,''));
 }
 
 export async function GET(req:Request,{params}:{params:Promise<{id:string}>}){
+ if(!authorized(req))return NextResponse.json({error:'Unauthorized'},{status:401});
  try{
-  if(!authorized(req))return NextResponse.json({error:'Unauthorized'},{status:401});
   const {id}=await params;
+  if(!id||id.length>100)return NextResponse.json({error:'Invalid trace ID'},{status:400});
   const trace=await getTrace(id);
-  return trace?NextResponse.json(trace):NextResponse.json({error:'Trace not found'},{status:404});
- }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Persistence error'},{status:503});}
+  return trace?NextResponse.json(trace,{headers:{'Cache-Control':'no-store'}}):NextResponse.json({error:'Trace not found'},{status:404});
+ }catch{
+  return NextResponse.json({error:'Trace store unavailable'},{status:503});
+ }
 }
