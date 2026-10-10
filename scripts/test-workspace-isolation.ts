@@ -60,13 +60,13 @@ async function main(){
 
   // Writes must stamp the caller's workspace ID into the persisted row.
   await saveTrace(traceB,workspaceB);
-  const traceWrite=requests.findLast(request=>request.method==='POST'&&request.url.includes('/reasonlens_traces'));
+  const traceWrite=requests.slice().reverse().find(request=>request.method==='POST'&&request.url.includes('/reasonlens_traces'));
   assert.ok(traceWrite,'trace write request should be sent');
   assert.equal(traceWrite.body.workspace_id,workspaceB,'trace writes must persist the requested workspace ID');
   assert.equal(traceWrite.body.id,traceB.id);
 
   await saveEvaluationRun(evaluationB,workspaceB);
-  const evaluationWrite=requests.findLast(request=>request.method==='POST'&&request.url.includes('/reasonlens_evaluation_runs'));
+  const evaluationWrite=requests.slice().reverse().find(request=>request.method==='POST'&&request.url.includes('/reasonlens_evaluation_runs'));
   assert.ok(evaluationWrite,'evaluation write request should be sent');
   assert.equal(evaluationWrite.body.workspace_id,workspaceB,'evaluation writes must persist the requested workspace ID');
   assert.equal(evaluationWrite.body.id,evaluationB.id);
