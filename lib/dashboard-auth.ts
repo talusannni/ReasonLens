@@ -1,10 +1,40 @@
-import {createHash,timingSafeEqual} from 'crypto';
+import {createHmac,timingSafeEqual} from 'node:crypto';
+import {DEFAULT_WORKSPACE_ID} from './workspace-auth';
+
+function sessionSecret(){return process.env.REASONLENS_SESSION_SECRET||process.env.REASONLENS_INGEST_KEY||'';}
+function signWorkspace(workspaceId:string){
+ const secret=sessionSecret();
+ return secret?createHmac('sha256',secret).update(workspaceId).digest('hex'):'';
+}
+function safeEquals(a:string,b:string){
+ const left=Buffer.from(a);const right=Buffer.from(b);
+ return left.length===right.length&&timingSafeEqual(left,right);
+}
+
+export function createDashboardSession(workspaceId:string):string{
+ const signature=signWorkspace(workspaceId);
+ if(!signature)throw new Error('Dashboard session signing is not configured.');
+ return workspaceId+'.'+signature;
+}
+
+export function dashboardWorkspaceId(req:Request):string|null{
+ const supplied=req.headers.get('cookie')?.match(/(?:^|; )reasonlens_dashboard=([^;]+)/)?.[1];
+ if(!supplied)return null;
+ const separator=supplied.indexOf('.');
+ if(separator>0){
+  const workspaceId=supplied.slice(0,separator);
+  const signature=supplied.slice(separator+1);
+  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(workspaceId))return null;
+  const expected=signWorkspace(workspaceId);
+  return expected&&safeEquals(signature,expected)?workspaceId:null;
+ }
+ // Accept already-issued legacy sessions until they expire, scoped only to the default workspace.
+ const legacySecret=process.env.REASONLENS_INGEST_KEY;
+ if(!legacySecret)return null;
+ const legacySignature=createHmac('sha256',legacySecret).update('legacy-dashboard').digest('hex');
+ return safeEquals(supplied,legacySignature)?DEFAULT_WORKSPACE_ID:null;
+}
 
 export function dashboardAuthorized(req:Request):boolean{
- const expected=process.env.REASONLENS_INGEST_KEY;
- const supplied=req.headers.get('cookie')?.match(/(?:^|; )reasonlens_dashboard=([^;]+)/)?.[1];
- if(!expected||!supplied)return false;
- const a=Buffer.from(supplied);
- const b=Buffer.from(createHash('sha256').update(expected).digest('hex'));
- return a.length===b.length&&timingSafeEqual(a,b);
+ return dashboardWorkspaceId(req)!==null;
 }
