@@ -58,7 +58,7 @@ export async function createWorkspaceForUser(userId:string,workspaceName:string)
  const workspaceRows=await responseJsonArray(workspaceResponse);
  const workspaceRow=workspaceRows[0];
  if(!workspaceResponse.ok||!workspaceRow||typeof workspaceRow.id!=='string'){
-  console.error('[ReasonLens signup] workspace_insert_failed',JSON.stringify({status:workspaceResponse.status,code:workspaceResponse.errorCode}));
+  console.error('[ReasonLens signup] workspace_insert_failed',JSON.stringify({status:workspaceResponse.status,code:workspaceRows.errorCode}));
   return null;
  }
  const workspaceId=workspaceRow.id;
@@ -82,7 +82,6 @@ async function responseJsonArray(response:Response):Promise<Array<Record<string,
   if(!response.ok){
    const error=value&&typeof value==='object'?value as Record<string,unknown>:{};
    const code=safeErrorCode(error);
-   Object.defineProperty([], 'errorCode', {value:code,enumerable:false});
    const empty=[] as Array<Record<string,unknown>> & {errorCode?:string};
    empty.errorCode=code;
    return empty;
