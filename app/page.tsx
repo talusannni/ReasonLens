@@ -46,6 +46,11 @@ export default function Home(){
  const [loadingHistory,setLoadingHistory]=useState(true);
  const [connected,setConnected]=useState(false);
  const [dashboardKey,setDashboardKey]=useState('');
+ const [authMode,setAuthMode]=useState<'key'|'sign-in'|'sign-up'>('key');
+ const [accountEmail,setAccountEmail]=useState('');
+ const [accountPassword,setAccountPassword]=useState('');
+ const [workspaceName,setWorkspaceName]=useState('');
+ const [connectNotice,setConnectNotice]=useState('');
  const [sidebarCollapsed,setSidebarCollapsed]=useState(false);
  const [evaluationRuns,setEvaluationRuns]=useState<EvaluationRun[]>([]);
  const [evaluationLoading,setEvaluationLoading]=useState(false);
@@ -103,7 +108,7 @@ export default function Home(){
  function importEvaluationDataset(event:React.ChangeEvent<HTMLInputElement>){const file=event.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(String(reader.result));const cases=Array.isArray(parsed)?parsed:parsed.cases;if(!Array.isArray(cases)||!cases.length)throw new Error('Dataset must be a non-empty JSON array or an object with a cases array.');if(cases.some((item:any)=>typeof item?.id!=='string'||typeof item?.name!=='string'||typeof item?.prompt!=='string'||(item?.traceId!==undefined&&typeof item.traceId!=='string')))throw new Error('Every case needs id, name and prompt.');setEvaluationCases(cases);setError('');}catch(e){setError(e instanceof Error?e.message:'Invalid evaluation dataset');}};reader.readAsText(file);event.target.value='';}
  useEffect(()=>{if(connected)loadEvaluations();},[connected]);
  async function connect(){
-  setError('');
+  setError('');setConnectNotice('');
   try{
    const r=await fetch('/api/dashboard/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:dashboardKey})});
    const d=await r.json();
@@ -114,7 +119,33 @@ export default function Home(){
    await loadEvaluations();
   }catch(e){setError(e instanceof Error?e.message:'Connection failed');}
  }
+ async function connectWithAccount(){
+  setError('');setConnectNotice('');
+  try{
+   const r=await fetch('/api/dashboard/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:accountEmail,password:accountPassword})});
+   const d=await r.json();
+   if(!r.ok)throw new Error(d.error||'Sign-in failed');
+   setAccountPassword('');setConnected(true);
+   await loadPersisted();await loadEvaluations();
+  }catch(e){setError(e instanceof Error?e.message:'Sign-in failed');}
+ }
+ async function createAccount(){
+  setError('');setConnectNotice('');
+  try{
+   const r=await fetch('/api/dashboard/signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:accountEmail,password:accountPassword,workspaceName:workspaceName.trim()||'Personal workspace'})});
+   const d=await r.json();
+   if(!r.ok)throw new Error(d.error||'Account creation failed');
+   setAccountPassword('');
+   if(d.needsEmailConfirmation){
+    setAuthMode('sign-in');
+    setConnectNotice('Account created. Check your email to confirm your address, then sign in.');
+    return;
+   }
+   setConnected(true);await loadPersisted();await loadEvaluations();
+  }catch(e){setError(e instanceof Error?e.message:'Account creation failed');}
+ }
  async function disconnect(){
+  await fetch('/api/dashboard/auth',{method:'DELETE'});
   await fetch('/api/dashboard/login',{method:'DELETE'});
   setConnected(false);setHistory([]);setHistoryTotal(0);setHistoryPage(1);setTrace(null);setEvaluationRuns([]);setEvaluationSelection([]);
  }
@@ -166,7 +197,7 @@ export default function Home(){
   <section className="content">
    <header className="topbar"><div><div className="eyebrow">AI OBSERVABILITY WORKSPACE</div><h2>{view==='workspace'?'Trace explorer':view==='history'?'Trace history':view==='analysis'?'Run comparison':view==='evaluations'?'Evaluations':'Configuration'}</h2></div><div className="top-actions"><span className="connection"><i/> Local-first</span>{trace&&<button className="ghost" onClick={exportTrace}>Export JSON</button>}</div></header>
 
-   {!connected&&<section className="connect-card"><div><div className="eyebrow">PERSISTED TRACE STORE</div><h3>Connect to your ReasonLens trace store</h3><p>Enter the same ReasonLens ingest key configured in Vercel. It is sent only to your ReasonLens deployment and stored as an HttpOnly session cookie.</p></div><div className="connect-row"><input type="password" value={dashboardKey} onChange={e=>setDashboardKey(e.target.value)} onKeyDown={e=>e.key==='Enter'&&connect()} placeholder="ReasonLens ingest key"/><button className="primary" onClick={connect} disabled={!dashboardKey}>Connect</button></div></section>}
+   {!connected&&<section className="connect-card"><div><div className="eyebrow">PERSISTED TRACE STORE</div><h3>Connect to ReasonLens</h3><p>Sign in to a team workspace, create a workspace, or connect with an existing workspace API key.</p></div><div className="connect-row"><button className={authMode==='sign-in'?'primary':'ghost'} onClick={()=>{setAuthMode('sign-in');setError('');setConnectNotice('');}}>Team sign in</button><button className={authMode==='sign-up'?'primary':'ghost'} onClick={()=>{setAuthMode('sign-up');setError('');setConnectNotice('');}}>Create account</button><button className={authMode==='key'?'primary':'ghost'} onClick={()=>{setAuthMode('key');setError('');setConnectNotice('');}}>API key</button></div>{authMode==='key'?<div className="connect-row"><input type="password" value={dashboardKey} onChange={e=>setDashboardKey(e.target.value)} onKeyDown={e=>e.key==='Enter'&&connect()} placeholder="ReasonLens workspace API key"/><button className="primary" onClick={connect} disabled={!dashboardKey}>Connect</button></div>:<div className="connect-row">{authMode==='sign-up'&&<input type="text" value={workspaceName} onChange={e=>setWorkspaceName(e.target.value)} placeholder="Workspace name (optional)" maxLength={80}/>}<input type="email" autoComplete="email" value={accountEmail} onChange={e=>setAccountEmail(e.target.value)} placeholder="Email address" maxLength={320}/><input type="password" autoComplete={authMode==='sign-up'?'new-password':'current-password'} value={accountPassword} onChange={e=>setAccountPassword(e.target.value)} onKeyDown={e=>e.key==='Enter'&&(authMode==='sign-up'?createAccount():connectWithAccount())} placeholder="Password (at least 8 characters)" maxLength={128}/><button className="primary" onClick={authMode==='sign-up'?createAccount:connectWithAccount} disabled={!accountEmail.trim()||accountPassword.length<8}>{authMode==='sign-up'?'Create workspace':'Sign in'}</button></div>}{connectNotice&&<div className="connect-notice" role="status">{connectNotice}</div>}{error&&<div className="error">{error}</div>}</section>}
 
    {view==='workspace'&&<div className="workspace">
     <section className="run-panel">
