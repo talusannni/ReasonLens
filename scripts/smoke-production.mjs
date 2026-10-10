@@ -1,0 +1,32 @@
+const base=(process.env.REASONLENS_BASE_URL||'https://reasonlens.vercel.app').replace(/\/$/,'');
+const timeoutMs=10000;
+
+async function request(path,init={}){
+ const response=await fetch(base+path,{...init,signal:AbortSignal.timeout(timeoutMs),headers:{'Content-Type':'application/json',...(init.headers||{})}});
+ const text=await response.text();
+ let body;
+ try{body=JSON.parse(text);}catch{body=text.slice(0,240);}
+ return {status:response.status,body};
+}
+function expect(name,result,status){
+ if(result.status!==status)throw new Error(name+' expected HTTP '+status+', received '+result.status+'; body='+JSON.stringify(result.body));
+ console.log('PASS '+name+' → '+result.status);
+}
+
+async function main(){
+ console.log('ReasonLens production smoke tests: '+base);
+ const health=await request('/api/health');
+ expect('health endpoint',health,200);
+ if(!health.body||health.body.status!=='ok'||health.body.service!=='reasonlens')throw new Error('Health response has an unexpected shape');
+
+ expect('trace read rejects missing credentials',await request('/api/traces'),401);
+ expect('trace ingestion rejects missing credentials',await request('/api/traces',{method:'POST',body:'{}'}),401);
+ expect('dashboard history rejects missing session',await request('/api/dashboard/traces'),401);
+
+ expect('blank demo prompt is rejected before execution',await request('/api/trace',{method:'POST',body:JSON.stringify({prompt:'   ',provider:'mock'})}),400);
+ expect('hosted Groq execution requires dashboard session',await request('/api/trace',{method:'POST',body:JSON.stringify({prompt:'ReasonLens smoke test',provider:'groq'})}),401);
+ expect('invalid dashboard key is rejected',await request('/api/dashboard/login',{method:'POST',body:JSON.stringify({key:'reasonlens-invalid-smoke-test-key'})}),401);
+
+ console.log('All '+7+' production smoke checks passed.');
+}
+main().catch(error=>{console.error('Production smoke test failed:',error instanceof Error?error.message:error);process.exitCode=1;});
