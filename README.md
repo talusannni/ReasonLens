@@ -113,7 +113,7 @@ npm run workspace:create-key -- --slug acme-team --name "Acme Team"
 
 The generated key is printed once. Store it securely and send it as `Authorization: Bearer <key>` to the trace ingestion API. Never commit the generated key or service-role credential.
 
-Dashboard sign-in accepts the same workspace API key and issues a signed, HTTP-only session scoped to that workspace. Existing sessions issued before this change remain scoped to the default workspace until they expire. This is still an incremental multi-workspace foundation, not a complete hosted SaaS: key-management UI, rate limits/quotas, workspace administration, audit/retention controls, and end-to-end tenant-isolation tests remain release requirements.
+Dashboard sign-in accepts the same workspace API key and issues a signed, HTTP-only session scoped to that workspace. Sessions have a server-validated seven-day expiry. Previously issued dashboard cookies without a verifiable expiry are rejected; sign in again after deployment. This is still an incremental multi-workspace foundation, not a complete hosted SaaS: key-management UI, rate limits/quotas, workspace administration, audit/retention controls, and end-to-end tenant-isolation tests remain release requirements.
 
 ## Important boundary
 
