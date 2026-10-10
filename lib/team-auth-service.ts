@@ -39,9 +39,15 @@ export async function signUpWithPassword(email:string,password:string):Promise<{
   method:'POST',headers:serviceHeaders(anonKey),body:JSON.stringify({email,password}),cache:'no-store'
  });
  const data=await responseJson(response) as SupabaseAuthResponse;
- if(!response.ok)return null;
+ if(!response.ok){
+  console.error('[ReasonLens signup] supabase_auth_rejected',JSON.stringify({status:response.status,code:safeErrorCode(data)}));
+  return null;
+ }
  const user=authUser(data);
- if(!user||(Array.isArray(user.identities)&&user.identities.length===0))return null;
+ if(!user||(Array.isArray(user.identities)&&user.identities.length===0)){
+  console.error('[ReasonLens signup] supabase_auth_missing_user',JSON.stringify({status:response.status,code:safeErrorCode(data),hasUser:!!user,identityCount:Array.isArray(user?.identities)?user.identities.length:null}));
+  return null;
+ }
  return {userId:user.id!,sessionReady:typeof data.access_token==='string'&&data.access_token.length>0};
 }
 
