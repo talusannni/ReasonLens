@@ -125,7 +125,7 @@ Before shipping a deployment, run the non-destructive smoke suite:
 npm run smoke:production
 ```
 
-By default it checks `https://reasonlens.vercel.app`. To check a staging or self-hosted deployment, set `REASONLENS_BASE_URL` to that base URL. The smoke suite does not create or mutate traces.
+By default it checks `https://reasonlens.vercel.app`. To check a staging or self-hosted deployment, set `REASONLENS_BASE_URL` to that base URL. The smoke suite does not create or mutate traces. If Vercel Deployment Protection is enabled, add a GitHub Actions secret named `VERCEL_AUTOMATION_BYPASS_SECRET` containing the project's automation-bypass secret so the scheduled workflow can reach the health endpoint.
 
 The API rejects oversized JSON payloads, validates trace shape and numeric metrics, and returns client errors for malformed requests. In production, the hosted Groq execution path requires an authenticated ReasonLens dashboard session; the no-key demo path remains available. Keep `SUPABASE_SERVICE_ROLE_KEY`, `GROQ_API_KEY`, and `REASONLENS_INGEST_KEY` server-side only.
 
