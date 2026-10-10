@@ -13,7 +13,9 @@
     "test:evidence-diff": "npx --yes tsx scripts/test-evidence-diff.ts",
     "test:trace-execution": "npx --yes tsx scripts/test-trace-execution.ts",
     "test:evaluation-regression": "npx --yes tsx scripts/test-evaluation-regression.ts",
-    "test:experiment-analysis": "npx --yes tsx scripts/test-experiment-analysis.ts"
+    "test:experiment-analysis": "npx --yes tsx scripts/test-experiment-analysis.ts",
+    "test:api-security": "npx --yes tsx scripts/test-api-security.ts",
+    "smoke:production": "node scripts/smoke-production.mjs"
   },
   "dependencies": {
     "next": "15.5.27",
