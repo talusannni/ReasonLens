@@ -1,4 +1,5 @@
 import type { Trace } from './types';
+import {DEFAULT_WORKSPACE_ID} from './workspace-auth';
 
 function config(){
  const url=process.env.SUPABASE_URL;
@@ -31,28 +32,29 @@ export interface TraceListPage {
  familyCounts:Record<string,number>;
 }
 
-export async function saveTrace(trace:Trace):Promise<Trace>{
+export async function saveTrace(trace:Trace,workspaceId=DEFAULT_WORKSPACE_ID):Promise<Trace>{
  const {url,key}=config();
- const row={id:trace.id,created_at:trace.createdAt,provider:trace.provider,model:trace.model,prompt:trace.prompt,mode:trace.mode,answer:trace.answer,status:trace.status,metrics:trace.metrics,nodes:trace.nodes,edges:trace.edges,workflow_id:trace.lineage?.workflowId||trace.id,parent_trace_id:trace.lineage?.parentTraceId||null,experiment_id:trace.lineage?.experimentId||null,config_fingerprint:trace.lineage?.configFingerprint||null};
+ const row={id:trace.id,workspace_id:workspaceId,created_at:trace.createdAt,provider:trace.provider,model:trace.model,prompt:trace.prompt,mode:trace.mode,answer:trace.answer,status:trace.status,metrics:trace.metrics,nodes:trace.nodes,edges:trace.edges,workflow_id:trace.lineage?.workflowId||trace.id,parent_trace_id:trace.lineage?.parentTraceId||null,experiment_id:trace.lineage?.experimentId||null,config_fingerprint:trace.lineage?.configFingerprint||null};
  const res=await fetch(url+'/rest/v1/reasonlens_traces',{method:'POST',headers:{...headers(key),Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(row),cache:'no-store'});
  if(!res.ok)throw new Error('Supabase trace write failed: '+res.status+' '+await res.text());
  return trace;
 }
 
-export async function getTrace(id:string):Promise<Trace|undefined>{
+export async function getTrace(id:string,workspaceId=DEFAULT_WORKSPACE_ID):Promise<Trace|undefined>{
  const {url,key}=config();
- const res=await fetch(url+'/rest/v1/reasonlens_traces?select=*&id=eq.'+encodeURIComponent(id)+'&limit=1',{headers:headers(key),cache:'no-store'});
+ const params=new URLSearchParams({select:'*',id:'eq.'+id,workspace_id:'eq.'+workspaceId,limit:'1'});
+ const res=await fetch(url+'/rest/v1/reasonlens_traces?'+params.toString(),{headers:headers(key),cache:'no-store'});
  if(!res.ok)throw new Error('Supabase trace read failed: '+res.status+' '+await res.text());
  const rows=await res.json();
  return rows[0]?toTrace(rows[0]):undefined;
 }
 
-export async function listTraceLineage(id:string):Promise<Trace[]>{
- const root=await getTrace(id);
+export async function listTraceLineage(id:string,workspaceId=DEFAULT_WORKSPACE_ID):Promise<Trace[]>{
+ const root=await getTrace(id,workspaceId);
  if(!root)return [];
  const workflowId=root.lineage?.workflowId||root.id;
  const {url,key}=config();
- const params=new URLSearchParams({select:'*',workflow_id:'eq.'+workflowId,order:'created_at.asc',limit:'250'});
+ const params=new URLSearchParams({select:'*',workspace_id:'eq.'+workspaceId,workflow_id:'eq.'+workflowId,order:'created_at.asc',limit:'250'});
  const res=await fetch(url+'/rest/v1/reasonlens_traces?'+params.toString(),{headers:headers(key),cache:'no-store'});
  if(!res.ok)throw new Error('Supabase trace lineage read failed: '+res.status+' '+await res.text());
  const rows=await res.json();
@@ -61,11 +63,11 @@ export async function listTraceLineage(id:string):Promise<Trace[]>{
  return traces.sort((a,b)=>a.createdAt.localeCompare(b.createdAt));
 }
 
-export async function listTracePage(options:TraceListOptions):Promise<TraceListPage>{
+export async function listTracePage(options:TraceListOptions,workspaceId=DEFAULT_WORKSPACE_ID):Promise<TraceListPage>{
  const {url,key}=config();
  const page=Math.max(1,Math.floor(options.page)||1);
  const pageSize=Math.min(100,Math.max(1,Math.floor(options.pageSize)||25));
- const params=new URLSearchParams({select:'*',order:'created_at.desc'});
+ const params=new URLSearchParams({select:'*',workspace_id:'eq.'+workspaceId,order:'created_at.desc'});
  const eq=(field:string,value:string|undefined)=>{if(value&&value!=='all')params.set(field,'eq.'+value);};
  eq('mode',options.mode);eq('status',options.status);eq('provider',options.provider);eq('model',options.model);
  if(options.since)params.set('created_at','gte.'+options.since);
@@ -100,7 +102,7 @@ export async function listTracePage(options:TraceListOptions):Promise<TraceListP
  const familyCounts:Record<string,number>={};
  workflowIds.forEach(id=>{familyCounts[id]=0;});
  if(workflowIds.length){
-  const familyParams=new URLSearchParams({select:'workflow_id',workflow_id:'in.('+workflowIds.join(',')+')',limit:'1000'});
+  const familyParams=new URLSearchParams({select:'workflow_id',workspace_id:'eq.'+workspaceId,workflow_id:'in.('+workflowIds.join(',')+')',limit:'1000'});
   const familyRes=await fetch(url+'/rest/v1/reasonlens_traces?'+familyParams.toString(),{headers:headers(key),cache:'no-store'});
   if(!familyRes.ok)throw new Error('Supabase trace family count failed: '+familyRes.status+' '+await familyRes.text());
   const familyRows=await familyRes.json();
@@ -109,8 +111,8 @@ export async function listTracePage(options:TraceListOptions):Promise<TraceListP
  return {traces,total,page,pageSize,totalPages,familyCounts};
 }
 
-export async function listTraces():Promise<Trace[]>{
- const result=await listTracePage({page:1,pageSize:100});
+export async function listTraces(workspaceId=DEFAULT_WORKSPACE_ID):Promise<Trace[]>{
+ const result=await listTracePage({page:1,pageSize:100},workspaceId);
  return result.traces;
 }
 
