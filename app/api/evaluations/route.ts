@@ -4,6 +4,7 @@ import {CORE_RAG_DATASET,evaluateDataset} from '../../../lib/evaluation';
 import {saveEvaluationRun,listEvaluationRuns} from '../../../lib/evaluation-store';
 import {getTrace,listTraces} from '../../../lib/trace-store';
 import {dashboardWorkspaceId} from '../../../lib/dashboard-auth';
+import {readJsonBody} from '../../../lib/api-security';
 import type {Trace} from '../../../lib/types';
 
 export async function GET(req:Request){
@@ -15,10 +16,25 @@ export async function GET(req:Request){
 export async function POST(req:Request){
  const workspaceId=dashboardWorkspaceId(req);
  if(!workspaceId)return NextResponse.json({error:'Dashboard authentication required'},{status:401});
+ const parsed=await readJsonBody(req,256*1024);
+ if(!parsed.ok)return NextResponse.json({error:parsed.error},{status:parsed.status});
  try{
-  const body=await req.json();
-  const name=typeof body?.name==='string'&&body.name.trim()?body.name.trim():'Evaluation run';
-  const cases=Array.isArray(body?.cases)&&body.cases.length?body.cases:CORE_RAG_DATASET;
+  const body=parsed.value as Record<string,unknown>|null;
+  if(!body||typeof body!=='object')return NextResponse.json({error:'Invalid evaluation payload'},{status:400});
+  if(body.name!==undefined&&(typeof body.name!=='string'||body.name.trim().length>200))return NextResponse.json({error:'name must be a string of at most 200 characters'},{status:400});
+  if(body.cases!==undefined&&(!Array.isArray(body.cases)||body.cases.length>500))return NextResponse.json({error:'cases must be an array with at most 500 entries'},{status:400});
+  const cases=Array.isArray(body.cases)&&body.cases.length?body.cases:CORE_RAG_DATASET;
+  for(const item of cases){
+   if(!item||typeof item!=='object'||typeof item.id!=='string'||!item.id.trim()||item.id.length>120||
+    typeof item.name!=='string'||!item.name.trim()||item.name.length>200||
+    typeof item.prompt!=='string'||!item.prompt.trim()||item.prompt.length>12000||
+    (item.traceId!==undefined&&(typeof item.traceId!=='string'||item.traceId.length>100))||
+    (item.description!==undefined&&(typeof item.description!=='string'||item.description.length>2000))||
+    (item.tags!==undefined&&(!Array.isArray(item.tags)||item.tags.length>20||item.tags.some((tag:unknown)=>typeof tag!=='string'||tag.length>100)))){
+    return NextResponse.json({error:'Invalid evaluation case; check id, name, prompt, traceId, description, and tags limits'},{status:400});
+   }
+  }
+  const name=typeof body.name==='string'&&body.name.trim()?body.name.trim():'Evaluation run';
   const traces=await listTraces(workspaceId);
   const pinnedIds=Array.from(new Set((cases as Array<{traceId?:unknown}>).map(item=>typeof item?.traceId==='string'?item.traceId:undefined).filter((id):id is string=>!!id)));
   const pinned=await Promise.all(pinnedIds.map(id=>getTrace(id,workspaceId).catch(()=>undefined)));
