@@ -1,5 +1,4 @@
-import {createHash,createHmac,timingSafeEqual} from 'node:crypto';
-import {DEFAULT_WORKSPACE_ID} from './workspace-auth';
+import {createHmac,timingSafeEqual} from 'node:crypto';
 
 const SESSION_TTL_SECONDS=60*60*24*7;
 
@@ -35,11 +34,7 @@ export function dashboardWorkspaceId(req:Request):string|null{
   const expected=sign(workspaceId+'.'+expiresText);
   return expected&&safeEquals(signature,expected)?workspaceId:null;
  }
- // Legacy sessions are restricted to the default workspace and naturally expire in the browser.
- const legacySecret=process.env.REASONLENS_INGEST_KEY;
- if(!legacySecret)return null;
- const legacySignature=createHash('sha256').update(legacySecret).digest('hex');
- return safeEquals(supplied,legacySignature)?DEFAULT_WORKSPACE_ID:null;
+ return null;
 }
 
 export function dashboardAuthorized(req:Request):boolean{
