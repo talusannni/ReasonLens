@@ -99,6 +99,22 @@ Trace API
                          Final answer
 ```
 
+## Workspace-scoped trace storage
+
+Trace and evaluation rows are assigned to a workspace. Existing records remain in the stable `default` workspace. The external `/api/traces` endpoints resolve bearer credentials to a workspace and constrain reads/writes to that workspace; API keys are stored as SHA-256 hashes, and revoked keys are rejected.
+
+Operators can provision a workspace and one initial API key from a trusted shell with server-side Supabase credentials:
+
+```bash
+SUPABASE_URL=https://your-project.supabase.co \
+SUPABASE_SERVICE_ROLE_KEY=<server-only-key> \
+npm run workspace:create-key -- --slug acme-team --name "Acme Team"
+```
+
+The generated key is printed once. Store it securely and send it as `Authorization: Bearer <key>` to the trace ingestion API. Never commit the generated key or service-role credential.
+
+This is an incremental backend boundary, not a claim of complete multi-tenant SaaS readiness. Dashboard sign-in and every customer-facing workflow must be verified as workspace-scoped before onboarding unrelated customers.
+
 ## Important boundary
 
 ReasonLens does not attempt to expose hidden model chain-of-thought. It displays structured traces, evidence, tool execution, claims and decisions that can be intentionally produced and reviewed.
