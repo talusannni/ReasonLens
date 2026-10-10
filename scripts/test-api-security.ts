@@ -17,10 +17,16 @@ async function main(){
  if(previousSessionSecret===undefined)delete process.env.REASONLENS_SESSION_SECRET;else process.env.REASONLENS_SESSION_SECRET=previousSessionSecret;
 
  const previousIngestKey=process.env.REASONLENS_INGEST_KEY;
+ const previousSupabaseUrl=process.env.SUPABASE_URL;
+ const previousServiceKey=process.env.SUPABASE_SERVICE_ROLE_KEY;
  process.env.REASONLENS_INGEST_KEY='legacy-workspace-test-key';
+ delete process.env.SUPABASE_URL;
+ delete process.env.SUPABASE_SERVICE_ROLE_KEY;
  assert.equal(await resolveWorkspaceForCredential('legacy-workspace-test-key'),DEFAULT_WORKSPACE_ID,'legacy ingestion credential should map to the default workspace');
- assert.equal(await resolveWorkspaceForCredential('not-a-valid-workspace-key'),null,'unknown workspace credentials should fail closed when persistence is not configured');
+ assert.equal(await resolveWorkspaceForCredential('not-a-valid-workspace-key'),null,'unknown workspace credentials should fail closed without persistence configuration');
  if(previousIngestKey===undefined)delete process.env.REASONLENS_INGEST_KEY;else process.env.REASONLENS_INGEST_KEY=previousIngestKey;
+ if(previousSupabaseUrl===undefined)delete process.env.SUPABASE_URL;else process.env.SUPABASE_URL=previousSupabaseUrl;
+ if(previousServiceKey===undefined)delete process.env.SUPABASE_SERVICE_ROLE_KEY;else process.env.SUPABASE_SERVICE_ROLE_KEY=previousServiceKey;
 
  const valid=await readJsonBody(new Request('https://reasonlens.test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ok:true})}));
  assert.equal(valid.ok,true,'valid JSON should parse');
