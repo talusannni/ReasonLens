@@ -1,7 +1,7 @@
 import {randomUUID} from 'node:crypto';
 
 type AuthUser={id?:string;email?:string;identities?:unknown[]};
-type SupabaseAuthResponse={access_token?:string;user?:AuthUser;id?:string;email?:string;msg?:string;message?:string;error_description?:string;error?:string};
+type SupabaseAuthResponse={access_token?:string;user?:AuthUser;id?:string;email?:string;msg?:string;message?:string;error_description?:string;error?:string;code?:string};
 
 function config(){
  const url=process.env.SUPABASE_URL?.replace(/\/$/,'');
@@ -17,6 +17,10 @@ async function responseJson(response:Response):Promise<Record<string,unknown>>{
 function authUser(value:SupabaseAuthResponse):AuthUser|null{
  const candidate=value.user&&typeof value.user==='object'?value.user:value;
  return candidate&&typeof candidate.id==='string'?candidate:null;
+}
+function safeErrorCode(value:Record<string,unknown>):string|undefined{
+ const candidate=value.code??value.error_code??value.error;
+ return typeof candidate==='string'&&/^[A-Za-z0-9_.-]{1,80}$/.test(candidate)?candidate:undefined;
 }
 
 export async function signInWithPassword(email:string,password:string):Promise<{userId:string}|null>{
@@ -53,13 +57,18 @@ export async function createWorkspaceForUser(userId:string,workspaceName:string)
  });
  const workspaceRows=await responseJsonArray(workspaceResponse);
  const workspaceRow=workspaceRows[0];
- if(!workspaceResponse.ok||!workspaceRow||typeof workspaceRow.id!=='string')return null;
+ if(!workspaceResponse.ok||!workspaceRow||typeof workspaceRow.id!=='string'){
+  console.error('[ReasonLens signup] workspace_insert_failed',JSON.stringify({status:workspaceResponse.status,code:workspaceResponse.errorCode}));
+  return null;
+ }
  const workspaceId=workspaceRow.id;
  const memberResponse=await fetch(url+'/rest/v1/reasonlens_workspace_members',{
   method:'POST',headers:{...headers,Prefer:'return=minimal'},
   body:JSON.stringify({workspace_id:workspaceId,user_id:userId,role:'owner'}),cache:'no-store'
  });
  if(!memberResponse.ok){
+  const memberError=await responseJson(memberResponse);
+  console.error('[ReasonLens signup] membership_insert_failed',JSON.stringify({status:memberResponse.status,code:safeErrorCode(memberError)}));
   const cleanup=new URLSearchParams({id:'eq.'+workspaceId});
   await fetch(url+'/rest/v1/reasonlens_workspaces?'+cleanup.toString(),{method:'DELETE',headers,cache:'no-store'}).catch(()=>undefined);
   return null;
@@ -67,8 +76,19 @@ export async function createWorkspaceForUser(userId:string,workspaceName:string)
  return workspaceId;
 }
 
-async function responseJsonArray(response:Response):Promise<Array<Record<string,unknown>>>{
- try{const value=await response.json();return Array.isArray(value)?value.filter((item:unknown)=>!!item&&typeof item==='object') as Array<Record<string,unknown>>:[];}catch{return [];}
+async function responseJsonArray(response:Response):Promise<Array<Record<string,unknown>> & {errorCode?:string}>{
+ try{
+  const value=await response.json();
+  if(!response.ok){
+   const error=value&&typeof value==='object'?value as Record<string,unknown>:{};
+   const code=safeErrorCode(error);
+   Object.defineProperty([], 'errorCode', {value:code,enumerable:false});
+   const empty=[] as Array<Record<string,unknown>> & {errorCode?:string};
+   empty.errorCode=code;
+   return empty;
+  }
+  return (Array.isArray(value)?value.filter((item:unknown)=>!!item&&typeof item==='object'):[]) as Array<Record<string,unknown>> & {errorCode?:string};
+ }catch{return [] as Array<Record<string,unknown>> & {errorCode?:string};}
 }
 
 export async function firstActiveWorkspaceForUser(userId:string):Promise<string|null>{
