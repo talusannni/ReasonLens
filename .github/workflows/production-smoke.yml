@@ -21,4 +21,5 @@ jobs:
       - name: Run non-destructive production smoke tests
         env:
           REASONLENS_BASE_URL: ${{ inputs.base_url || 'https://reasonlens.vercel.app' }}
+          REASONLENS_VERCEL_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: node scripts/smoke-production.mjs
