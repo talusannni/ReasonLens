@@ -1,15 +1,16 @@
 import { NextResponse } from 'next/server';
-import { dashboardAuthorized } from '../../../../lib/dashboard-auth';
+import { dashboardWorkspaceId } from '../../../../lib/dashboard-auth';
 import { listTraceLineage } from '../../../../lib/trace-store';
 
 export async function GET(req:Request){
- if(!dashboardAuthorized(req))return NextResponse.json({error:'Dashboard authentication required'},{status:401});
+ const workspaceId=dashboardWorkspaceId(req);
+ if(!workspaceId)return NextResponse.json({error:'Dashboard authentication required'},{status:401});
  try{
   const id=new URL(req.url).searchParams.get('traceId')||'';
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)){
    return NextResponse.json({error:'Invalid trace ID'},{status:400});
   }
-  const traces=await listTraceLineage(id);
+  const traces=await listTraceLineage(id,workspaceId);
   if(!traces.length)return NextResponse.json({error:'Trace not found'},{status:404});
   return NextResponse.json({traces},{headers:{'Cache-Control':'no-store'}});
  }catch(e){
