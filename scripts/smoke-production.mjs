@@ -1,8 +1,9 @@
 const base=(process.env.REASONLENS_BASE_URL||'https://reasonlens.vercel.app').replace(/\/$/,'');
 const timeoutMs=10000;
+const protectionHeaders=process.env.REASONLENS_VERCEL_BYPASS_SECRET?{'x-vercel-protection-bypass':process.env.REASONLENS_VERCEL_BYPASS_SECRET}:{};
 
 async function request(path,init={}){
- const response=await fetch(base+path,{...init,signal:AbortSignal.timeout(timeoutMs),headers:{'Content-Type':'application/json',...(init.headers||{})}});
+ const response=await fetch(base+path,{...init,signal:AbortSignal.timeout(timeoutMs),headers:{'Content-Type':'application/json',...protectionHeaders,...(init.headers||{})}});
  const text=await response.text();
  let body;
  try{body=JSON.parse(text);}catch{body=text.slice(0,240);}
