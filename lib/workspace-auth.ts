@@ -16,7 +16,7 @@ function safeEquals(a:string,b:string){
 function headers(key:string){return {'Content-Type':'application/json','apikey':key,'Authorization':`Bearer ${key}`};}
 
 export async function resolveWorkspaceForCredential(credential:string|undefined):Promise<string|null>{
- if(!credential)return null;
+ if(!credential||credential.length>512)return null;
  if(process.env.REASONLENS_INGEST_KEY&&safeEquals(credential,process.env.REASONLENS_INGEST_KEY))return DEFAULT_WORKSPACE_ID;
  try{
   const {url,key}=config();
@@ -31,9 +31,19 @@ export async function resolveWorkspaceForCredential(credential:string|undefined)
   if(!workspaceResponse.ok)return null;
   const workspaces=await workspaceResponse.json();
   if(!workspaces[0]||workspaces[0].status!=='active')return null;
-  void fetch(url+'/rest/v1/reasonlens_api_keys?'+new URLSearchParams({key_hash:'eq.'+digest(credential),revoked_at:'is.null'}).toString(),{
-   method:'PATCH',headers:{...headers(key),Prefer:'return=minimal'},body:JSON.stringify({last_used_at:new Date().toISOString()}),cache:'no-store'
-  }).catch(()=>undefined);
   return workspaceId;
  }catch{return null;}
+}
+
+export async function markWorkspaceCredentialUsed(credential:string):Promise<void>{
+ try{
+  const {url,key}=config();
+  const params=new URLSearchParams({key_hash:'eq.'+digest(credential),revoked_at:'is.null'});
+  await fetch(url+'/rest/v1/reasonlens_api_keys?'+params.toString(),{
+   method:'PATCH',headers:{...headers(key),Prefer:'return=minimal'},
+   body:JSON.stringify({last_used_at:new Date().toISOString()}),cache:'no-store'
+  });
+ }catch{
+  // Usage telemetry must not turn a successful authentication into a failed login.
+ }
 }
