@@ -52,8 +52,9 @@ export async function createWorkspaceForUser(userId:string,workspaceName:string)
   body:JSON.stringify({name:safeName,slug,status:'active'}),cache:'no-store'
  });
  const workspaceRows=await responseJsonArray(workspaceResponse);
- if(!workspaceResponse.ok||!workspaceRows[0]||typeof workspaceRows[0].id!=='string')return null;
- const workspaceId=workspaceRows[0].id;
+ const workspaceRow=workspaceRows[0];
+ if(!workspaceResponse.ok||!workspaceRow||typeof workspaceRow.id!=='string')return null;
+ const workspaceId=workspaceRow.id;
  const memberResponse=await fetch(url+'/rest/v1/reasonlens_workspace_members',{
   method:'POST',headers:{...headers,Prefer:'return=minimal'},
   body:JSON.stringify({workspace_id:workspaceId,user_id:userId,role:'owner'}),cache:'no-store'
