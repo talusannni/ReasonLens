@@ -21,6 +21,15 @@ ReasonLens is a model-agnostic, local-first visual debugger for AI systems. It f
 - Responsive desktop/mobile UI
 - GitHub Actions typecheck/build validation
 
+## Public site and account access
+
+- `/` is the public product landing page describing trace exploration, evidence provenance, comparisons, and evaluations.
+- `/demo` is an interactive, static sample trace tour for chat, RAG, and agent workflows. Its sample records are illustrative and do not call a model.
+- `/login` is the dedicated email/password sign-in and account-creation page.
+- `/workspace` is the authenticated trace explorer. Requests without a valid workspace session are redirected to sign-in.
+
+New signups create a workspace and owner membership. If account creation succeeds but workspace provisioning fails, the user should sign in with that account; the sign-in flow attempts to find or provision an active workspace rather than requiring another signup. Workspace provisioning and tenant-isolation behavior must be validated in Preview before merging authentication changes.
+
 ## Run
 
 ```bash
