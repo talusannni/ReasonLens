@@ -2,7 +2,7 @@ import {NextResponse} from 'next/server';
 import {createHash} from 'node:crypto';
 import {runTrace} from '../../../lib/provider';
 import {getTrace,saveTrace} from '../../../lib/trace-store';
-import {dashboardWorkspaceId} from '../../../lib/dashboard-auth';
+import {resolveDashboardWorkspaceId} from '../../../lib/dashboard-auth';
 import {readJsonBody} from '../../../lib/api-security';
 import type {TraceMode} from '../../../lib/types';
 
@@ -17,7 +17,7 @@ export async function POST(req:Request){
  if(prompt.length>12000)return NextResponse.json({error:'prompt must be 12000 characters or fewer'},{status:413});
  const provider=body.provider===undefined?'mock':body.provider;
  if(provider!=='mock'&&provider!=='groq')return NextResponse.json({error:'provider must be mock or groq'},{status:400});
- const workspaceId=dashboardWorkspaceId(req);
+ const workspaceId=await resolveDashboardWorkspaceId(req);
  const persistTrace=workspaceId!==null;
  if(provider==='groq'&&process.env.NODE_ENV==='production'&&!persistTrace){
   return NextResponse.json({error:'Connect to the ReasonLens dashboard before using the hosted Groq provider'},{status:401});
