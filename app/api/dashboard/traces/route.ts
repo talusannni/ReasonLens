@@ -1,20 +1,12 @@
 import { NextResponse } from 'next/server';
-import { createHash, timingSafeEqual } from 'crypto';
+import { dashboardWorkspaceId } from '../../../../lib/dashboard-auth';
 import { listTracePage } from '../../../../lib/trace-store';
-
-function authorized(req:Request){
-  const expected=process.env.REASONLENS_INGEST_KEY;
-  const supplied=req.headers.get('cookie')?.match(/(?:^|; )reasonlens_dashboard=([^;]+)/)?.[1];
-  if(!expected||!supplied)return false;
-  const a=Buffer.from(supplied);
-  const b=Buffer.from(createHash('sha256').update(expected).digest('hex'));
-  return a.length===b.length&&timingSafeEqual(a,b);
-}
 
 const allowed=(value:string|null,values:string[])=>value&&values.includes(value)?value:undefined;
 
 export async function GET(req:Request){
-  if(!authorized(req))return NextResponse.json({error:'Dashboard authentication required'},{status:401});
+  const workspaceId=dashboardWorkspaceId(req);
+  if(!workspaceId)return NextResponse.json({error:'Dashboard authentication required'},{status:401});
   try{
     const params=new URL(req.url).searchParams;
     const page=Math.min(100000,Math.max(1,Number.parseInt(params.get('page')||'1',10)||1));
@@ -31,7 +23,7 @@ export async function GET(req:Request){
       since,
       sort:allowed(params.get('sort'),['newest','oldest','latency-desc','latency-asc','cost-desc','cost-asc'])||'newest',
       execution:allowed(params.get('execution'),['retrieval-only','full-pipeline','llm-executed','partial','no-llm'])||undefined
-    });
+    },workspaceId);
     return NextResponse.json(result,{headers:{'Cache-Control':'no-store'}});
   }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Trace store unavailable'},{status:503});}
 }
