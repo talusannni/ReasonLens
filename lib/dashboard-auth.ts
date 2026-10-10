@@ -1,7 +1,7 @@
-import {createHmac,timingSafeEqual} from 'node:crypto';
+import {createHash,createHmac,timingSafeEqual} from 'node:crypto';
 import {DEFAULT_WORKSPACE_ID} from './workspace-auth';
 
-function sessionSecret(){return process.env.REASONLENS_SESSION_SECRET||process.env.REASONLENS_INGEST_KEY||'';}
+function sessionSecret(){return process.env.REASONLENS_SESSION_SECRET||process.env.REASONLENS_INGEST_KEY||process.env.SUPABASE_SERVICE_ROLE_KEY||'';}
 function signWorkspace(workspaceId:string){
  const secret=sessionSecret();
  return secret?createHmac('sha256',secret).update(workspaceId).digest('hex'):'';
@@ -31,7 +31,7 @@ export function dashboardWorkspaceId(req:Request):string|null{
  // Accept already-issued legacy sessions until they expire, scoped only to the default workspace.
  const legacySecret=process.env.REASONLENS_INGEST_KEY;
  if(!legacySecret)return null;
- const legacySignature=createHmac('sha256',legacySecret).update('legacy-dashboard').digest('hex');
+ const legacySignature=createHash('sha256').update(legacySecret).digest('hex');
  return safeEquals(supplied,legacySignature)?DEFAULT_WORKSPACE_ID:null;
 }
 
