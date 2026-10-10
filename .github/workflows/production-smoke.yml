@@ -1,0 +1,24 @@
+name: Production smoke tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Optional deployment base URL (defaults to production)
+        required: false
+        type: string
+  schedule:
+    - cron: '23 */6 * * *'
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run non-destructive production smoke tests
+        env:
+          REASONLENS_BASE_URL: ${{ inputs.base_url || 'https://reasonlens.vercel.app' }}
+        run: node scripts/smoke-production.mjs
