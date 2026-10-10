@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {constantTimeSecretEquals,readJsonBody} from '../lib/api-security';
-import {createDashboardSession,dashboardWorkspaceId} from '../lib/dashboard-auth';
+import {createDashboardSession,createTeamDashboardSession,dashboardWorkspaceId,resolveDashboardWorkspaceId} from '../lib/dashboard-auth';
 import {DEFAULT_WORKSPACE_ID,resolveWorkspaceForCredential} from '../lib/workspace-auth';
 
 async function main(){
@@ -16,6 +16,33 @@ async function main(){
  assert.equal(dashboardWorkspaceId(new Request('https://reasonlens.test',{headers:{cookie:'reasonlens_dashboard='+DEFAULT_WORKSPACE_ID+'.invalid'}})),null,'invalid workspace session signature should fail closed');
  const expiredSession=createDashboardSession(DEFAULT_WORKSPACE_ID,-1);
  assert.equal(dashboardWorkspaceId(new Request('https://reasonlens.test',{headers:{cookie:'reasonlens_dashboard='+expiredSession}})),null,'expired workspace session should fail closed');
+
+ const previousTeamUrl=process.env.SUPABASE_URL;
+ const previousTeamServiceKey=process.env.SUPABASE_SERVICE_ROLE_KEY;
+ const previousFetch=globalThis.fetch;
+ process.env.SUPABASE_URL='https://reasonlens-test.supabase.co';
+ process.env.SUPABASE_SERVICE_ROLE_KEY='service-role-test';
+ const teamUserId='00000000-0000-4000-8000-000000000002';
+ const teamSession=createTeamDashboardSession(DEFAULT_WORKSPACE_ID,teamUserId);
+ globalThis.fetch=(async(input:RequestInfo|URL)=>{
+  const url=String(input);
+  if(url.includes('/reasonlens_workspace_members?'))return new Response(JSON.stringify([{workspace_id:DEFAULT_WORKSPACE_ID}]),{status:200});
+  if(url.includes('/reasonlens_workspaces?'))return new Response(JSON.stringify([{id:DEFAULT_WORKSPACE_ID,status:'active'}]),{status:200});
+  return new Response('not found',{status:404});
+ }) as typeof fetch;
+ assert.equal(await resolveDashboardWorkspaceId(new Request('https://reasonlens.test',{headers:{cookie:'reasonlens_team_session='+teamSession}})),DEFAULT_WORKSPACE_ID,'team session should resolve only with active membership');
+ globalThis.fetch=(async(input:RequestInfo|URL)=>{
+  const url=String(input);
+  if(url.includes('/reasonlens_workspace_members?'))return new Response(JSON.stringify([]),{status:200});
+  if(url.includes('/reasonlens_workspaces?'))return new Response(JSON.stringify([{id:DEFAULT_WORKSPACE_ID,status:'active'}]),{status:200});
+  return new Response('not found',{status:404});
+ }) as typeof fetch;
+ assert.equal(await resolveDashboardWorkspaceId(new Request('https://reasonlens.test',{headers:{cookie:'reasonlens_team_session='+teamSession}})),null,'team session without membership should fail closed');
+ const expiredTeamSession=createTeamDashboardSession(DEFAULT_WORKSPACE_ID,teamUserId,-1);
+ assert.equal(await resolveDashboardWorkspaceId(new Request('https://reasonlens.test',{headers:{cookie:'reasonlens_team_session='+expiredTeamSession}})),null,'expired team session should fail closed');
+ globalThis.fetch=previousFetch;
+ if(previousTeamUrl===undefined)delete process.env.SUPABASE_URL;else process.env.SUPABASE_URL=previousTeamUrl;
+ if(previousTeamServiceKey===undefined)delete process.env.SUPABASE_SERVICE_ROLE_KEY;else process.env.SUPABASE_SERVICE_ROLE_KEY=previousTeamServiceKey;
  if(previousSessionSecret===undefined)delete process.env.REASONLENS_SESSION_SECRET;else process.env.REASONLENS_SESSION_SECRET=previousSessionSecret;
 
  const previousIngestKey=process.env.REASONLENS_INGEST_KEY;
