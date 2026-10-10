@@ -53,7 +53,7 @@ export async function createWorkspaceForUser(userId:string,workspaceName:string)
  const headers=serviceHeaders(serviceKey);
  const workspaceResponse=await fetch(url+'/rest/v1/reasonlens_workspaces',{
   method:'POST',headers:{...headers,Prefer:'return=representation'},
-  body:JSON.stringify({name:safeName,slug,status:'active'}),cache:'no-store'
+  body:JSON.stringify({id:randomUUID(),name:safeName,slug,status:'active'}),cache:'no-store'
  });
  const workspaceRows=await responseJsonArray(workspaceResponse);
  const workspaceRow=workspaceRows[0];
