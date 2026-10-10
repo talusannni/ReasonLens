@@ -66,7 +66,7 @@ export default function Home(){
   try{
    const params=new URLSearchParams({page:String(page),pageSize:String(historyPageSize),search,mode:historyModeFilter,status:historyStatusFilter,provider:historyProviderFilter,model:historyModelFilter,days:historyTimeFilter,sort:historySort,execution:historyExecutionFilter});
    const r=await fetch('/api/dashboard/traces?'+params.toString(),{cache:'no-store'});
-   if(r.status===401){setConnected(false);return;}
+   if(r.status===401){setConnected(false);window.location.replace('/login');return;}
    const d=await r.json();
    if(!r.ok)throw new Error(d.error||'Could not load traces');
    setHistory(Array.isArray(d.traces)?d.traces:[]);
