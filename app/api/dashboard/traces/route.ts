@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { dashboardWorkspaceId } from '../../../../lib/dashboard-auth';
+import { resolveDashboardWorkspaceId } from '../../../../lib/dashboard-auth';
 import { listTracePage } from '../../../../lib/trace-store';
 
 const allowed=(value:string|null,values:string[])=>value&&values.includes(value)?value:undefined;
 
 export async function GET(req:Request){
-  const workspaceId=dashboardWorkspaceId(req);
+  const workspaceId=await resolveDashboardWorkspaceId(req);
   if(!workspaceId)return NextResponse.json({error:'Dashboard authentication required'},{status:401});
   try{
     const params=new URL(req.url).searchParams;
