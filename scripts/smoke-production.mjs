@@ -24,9 +24,13 @@ async function main(){
  expect('dashboard history rejects missing session',await request('/api/dashboard/traces'),401);
 
  expect('blank demo prompt is rejected before execution',await request('/api/trace',{method:'POST',body:JSON.stringify({prompt:'   ',provider:'mock'})}),400);
+ const demo=await request('/api/trace',{method:'POST',body:JSON.stringify({prompt:'ReasonLens public demo smoke test',provider:'mock',mode:'chat'})});
+ expect('public demo execution remains available without persistence credentials',demo,200);
+ if(!demo.body||typeof demo.body.id!=='string'||!Array.isArray(demo.body.nodes)||!Array.isArray(demo.body.edges))throw new Error('Demo trace response is missing required trace fields');
+ expect('oversized prompt is rejected before execution',await request('/api/trace',{method:'POST',body:JSON.stringify({prompt:'x'.repeat(12001),provider:'mock'})}),413);
  expect('hosted Groq execution requires dashboard session',await request('/api/trace',{method:'POST',body:JSON.stringify({prompt:'ReasonLens smoke test',provider:'groq'})}),401);
  expect('invalid dashboard key is rejected',await request('/api/dashboard/login',{method:'POST',body:JSON.stringify({key:'reasonlens-invalid-smoke-test-key'})}),401);
 
- console.log('All '+7+' production smoke checks passed.');
+ console.log('All '+9+' production smoke checks passed.');
 }
 main().catch(error=>{console.error('Production smoke test failed:',error instanceof Error?error.message:error);process.exitCode=1;});
