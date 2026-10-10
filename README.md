@@ -270,7 +270,7 @@ Run the deterministic experiment-analysis tests:
 npm run test:experiment-analysis
 ```
 
-The migration `supabase/migrations/202610090002_normalize_experiment_groups.sql` normalizes existing variants so each workflow shares one experiment ID. It has been applied to the production Supabase project; the migration remains in source control for reproducibility.
+The migration `supabase/migrations/20261009151203_normalize_trace_experiment_groups.sql` normalizes existing variants so each workflow shares one experiment ID. It has been applied to the production Supabase project; the migration remains in source control for reproducibility.
 
 ## License
 
@@ -323,7 +323,7 @@ The gate compares captured evaluation results; it does not invoke a model or rer
 
 Each execution is stored as a separate trace. The dashboard can link a new run to a parent trace using **Run variant from this trace**; change the prompt or settings before executing to create an experiment branch. The trace history labels the workflow root or variant, and the workspace lineage panel shows sibling runs, parent IDs, configuration fingerprints, and quick actions to open, compare, branch, or pin a trace into the evaluation dataset.
 
-Lineage metadata is stored in `workflow_id`, `parent_trace_id`, `experiment_id`, and `config_fingerprint` on `public.reasonlens_traces`. Existing traces are backfilled as workflow roots by the migration `supabase/migrations/202610090001_add_trace_lineage.sql`. The deployed Supabase project has this migration applied.
+Lineage metadata is stored in `workflow_id`, `parent_trace_id`, `experiment_id`, and `config_fingerprint` on `public.reasonlens_traces`. Existing traces are backfilled as workflow roots by the migration `supabase/migrations/20261009133322_add_reasonlens_trace_lineage.sql`. The deployed Supabase project has this migration applied.
 
 - **Compare** selects lineage traces for the existing run comparison view.
 - **Evaluate** pins a trace to the evaluation dataset; pinned trace IDs are fetched directly so older traces are not missed by the default history window.
