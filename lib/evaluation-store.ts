@@ -14,7 +14,7 @@ export async function saveEvaluationRun(run:EvaluationRun,workspaceId=DEFAULT_WO
   warnedCases:run.warnedCases,failedCases:run.failedCases,passRate:run.passRate,averageProvenanceScore:run.averageProvenanceScore,
   totalLatencyMs:run.totalLatencyMs,averageLatencyMs:run.averageLatencyMs,totalCostUsd:run.totalCostUsd
  }};
- const res=await fetch(url+'/rest/v1/reasonlens_evaluation_runs',{method:'POST',headers:{...headers(key),Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(row),cache:'no-store'});
+ const res=await fetch(url+'/rest/v1/reasonlens_evaluation_runs',{method:'POST',headers:{...headers(key),Prefer:'return=minimal'},body:JSON.stringify(row),cache:'no-store'});
  if(!res.ok)throw new Error('Supabase evaluation write failed: '+res.status+' '+await res.text());
  return run;
 }
