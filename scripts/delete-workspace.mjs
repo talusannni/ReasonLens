@@ -11,7 +11,7 @@ if(!slug||!/^[a-z0-9](?:[a-z0-9-]{1,48}[a-z0-9])$/.test(slug)){
 }
 const headers={apikey:serviceKey,Authorization:'Bearer '+serviceKey,'Content-Type':'application/json',Prefer:'return=minimal'};
 async function countRows(table,workspaceId){
- const params=new URLSearchParams({select:'*',workspace_id:'eq.'+workspaceId,limit:'1'});
+ const params=new URLSearchParams({select:'id',workspace_id:'eq.'+workspaceId,limit:'1'});
  const response=await fetch(url+'/rest/v1/'+table+'?'+params,{headers:{...headers,Prefer:'count=exact',Range:'0-0'},cache:'no-store'});
  if(!response.ok)throw new Error(table+' count failed: '+response.status);
  const range=response.headers.get('content-range');
@@ -19,11 +19,6 @@ async function countRows(table,workspaceId){
  const total=range.split('/')[1];
  if(total==='*'||!Number.isFinite(Number(total)))throw new Error(table+' count was not exact.');
  return Number(total);
-}
-async function deleteWorkspaceRows(table,workspaceId){
- const params=new URLSearchParams({workspace_id:'eq.'+workspaceId});
- const response=await fetch(url+'/rest/v1/'+table+'?'+params,{method:'DELETE',headers,cache:'no-store'});
- if(!response.ok)throw new Error(table+' deletion failed: '+response.status+' '+(await response.text()).slice(0,200));
 }
 async function main(){
  const lookup=new URLSearchParams({select:'id,name,slug',slug:'eq.'+slug,limit:'1'});
@@ -46,12 +41,12 @@ async function main(){
  for(const [table,count] of Object.entries(counts))console.log(table+': '+count);
  console.log('Rate-limit windows will be removed by the workspace foreign-key cascade.');
  if(!apply){console.log('Dry run only. Back up any required data, then re-run with --apply to permanently delete this workspace.');return;}
- for(const table of ['reasonlens_evaluation_runs','reasonlens_traces','reasonlens_api_keys','reasonlens_workspace_members','reasonlens_workspace_invitations']){
-  await deleteWorkspaceRows(table,workspace.id);
- }
- const deleteParams=new URLSearchParams({id:'eq.'+workspace.id});
- const deleted=await fetch(url+'/rest/v1/reasonlens_workspaces?'+deleteParams,{method:'DELETE',headers,cache:'no-store'});
+ const deleted=await fetch(url+'/rest/v1/rpc/reasonlens_delete_workspace',{
+  method:'POST',headers,body:JSON.stringify({p_workspace_id:workspace.id}),cache:'no-store'
+ });
  if(!deleted.ok)throw new Error('Workspace deletion failed: '+deleted.status+' '+(await deleted.text()).slice(0,200));
- console.log('Workspace and workspace-owned data deleted. This action cannot be undone from ReasonLens.');
+ const summary=await deleted.json();
+ console.log('Workspace and workspace-owned data deleted atomically: '+JSON.stringify(summary));
+ console.log('This action cannot be undone from ReasonLens.');
 }
 main().catch(e=>{console.error(e instanceof Error?e.message:e);process.exitCode=1;});
