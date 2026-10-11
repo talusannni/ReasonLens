@@ -22,7 +22,7 @@ create or replace function public.reasonlens_consume_rate_limit(
 )
 returns table(allowed boolean, remaining integer, reset_at timestamptz)
 language plpgsql
-security definer
+security invoker
 set search_path = public, pg_temp
 as $$
 declare
