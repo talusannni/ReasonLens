@@ -21,6 +21,8 @@ export async function POST(req:Request){
  if(!workspaceId)return NextResponse.json({error:'Dashboard authentication required'},{status:401});
  const limited=await enforceWorkspaceRateLimit(workspaceId,'evaluation-run',60,10);
  if(limited)return limited;
+ const quota=await enforceWorkspaceRateLimit(workspaceId,'evaluation-run-daily',86400,100);
+ if(quota)return quota;
  const parsed=await readJsonBody(req,256*1024);
  if(!parsed.ok)return NextResponse.json({error:parsed.error},{status:parsed.status});
  try{
