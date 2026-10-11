@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { dashboardWorkspaceId } from '../../../../lib/dashboard-auth';
+import { resolveDashboardWorkspaceId } from '../../../../lib/dashboard-auth';
 import { listTracePage } from '../../../../lib/trace-store';
 import { enforceRateLimit,workspaceRateLimitScope } from '../../../../lib/rate-limit';
 
 const allowed=(value:string|null,values:string[])=>value&&values.includes(value)?value:undefined;
 
 export async function GET(req:Request){
-  const workspaceId=dashboardWorkspaceId(req);
+  const workspaceId=await resolveDashboardWorkspaceId(req);
   if(!workspaceId)return NextResponse.json({error:'Dashboard authentication required'},{status:401});
   const limited=await enforceRateLimit(req,workspaceRateLimitScope(workspaceId,'dashboard-trace-list'),60,60);
   if(limited)return limited;

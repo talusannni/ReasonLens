@@ -2,13 +2,13 @@ import {NextResponse} from 'next/server';
 import {createHash} from 'node:crypto';
 import {runTrace} from '../../../lib/provider';
 import {getTrace,saveTrace} from '../../../lib/trace-store';
-import {dashboardWorkspaceId} from '../../../lib/dashboard-auth';
+import {resolveDashboardWorkspaceId} from '../../../lib/dashboard-auth';
 import {readJsonBody} from '../../../lib/api-security';
 import {enforceRateLimit,ipRateLimitScope,workspaceRateLimitScope} from '../../../lib/rate-limit';
 import type {TraceMode} from '../../../lib/types';
 
 export async function POST(req:Request){
- const workspaceId=dashboardWorkspaceId(req);
+ const workspaceId=await resolveDashboardWorkspaceId(req);
  const limited=await enforceRateLimit(
   req,
   workspaceId?workspaceRateLimitScope(workspaceId,'trace-execution'):ipRateLimitScope(req,'public-trace-execution'),

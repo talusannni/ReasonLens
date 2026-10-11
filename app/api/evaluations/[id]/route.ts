@@ -1,10 +1,10 @@
 import {NextResponse} from 'next/server';
 import {getEvaluationRun,deleteEvaluationRun} from '../../../../lib/evaluation-store';
-import {dashboardWorkspaceId} from '../../../../lib/dashboard-auth';
+import {resolveDashboardWorkspaceId} from '../../../../lib/dashboard-auth';
 import {enforceRateLimit,workspaceRateLimitScope} from '../../../../lib/rate-limit';
 
 export async function GET(req:Request,{params}:{params:Promise<{id:string}>}){
- const workspaceId=dashboardWorkspaceId(req);
+ const workspaceId=await resolveDashboardWorkspaceId(req);
  if(!workspaceId)return NextResponse.json({error:'Dashboard authentication required'},{status:401});
  const limited=await enforceRateLimit(req,workspaceRateLimitScope(workspaceId,'evaluation-detail'),60,60);
  if(limited)return limited;
@@ -17,7 +17,7 @@ export async function GET(req:Request,{params}:{params:Promise<{id:string}>}){
 }
 
 export async function DELETE(req:Request,{params}:{params:Promise<{id:string}>}){
- const workspaceId=dashboardWorkspaceId(req);
+ const workspaceId=await resolveDashboardWorkspaceId(req);
  if(!workspaceId)return NextResponse.json({error:'Dashboard authentication required'},{status:401});
  const limited=await enforceRateLimit(req,workspaceRateLimitScope(workspaceId,'evaluation-delete'),10,60);
  if(limited)return limited;

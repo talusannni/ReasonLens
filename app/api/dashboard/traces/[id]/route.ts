@@ -1,10 +1,10 @@
 import {NextResponse} from 'next/server';
-import {dashboardWorkspaceId} from '../../../../../lib/dashboard-auth';
+import {resolveDashboardWorkspaceId} from '../../../../../lib/dashboard-auth';
 import {deleteTrace} from '../../../../../lib/trace-store';
 import {enforceRateLimit,workspaceRateLimitScope} from '../../../../../lib/rate-limit';
 
 export async function DELETE(req:Request,{params}:{params:Promise<{id:string}>}){
- const workspaceId=dashboardWorkspaceId(req);
+ const workspaceId=await resolveDashboardWorkspaceId(req);
  if(!workspaceId)return NextResponse.json({error:'Dashboard authentication required'},{status:401});
  const limited=await enforceRateLimit(req,workspaceRateLimitScope(workspaceId,'trace-delete'),10,60);
  if(limited)return limited;

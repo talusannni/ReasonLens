@@ -27,6 +27,7 @@ export async function POST(req:Request){
   response.cookies.set('reasonlens_dashboard',createDashboardSession(workspaceId),{
    httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'strict',path:'/',maxAge:60*60*24*7
   });
+  response.cookies.set('reasonlens_team_session','',{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'strict',path:'/',maxAge:0});
   return response;
  }catch{
   return NextResponse.json({error:'Dashboard authentication is not configured'},{status:503});

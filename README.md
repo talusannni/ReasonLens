@@ -319,3 +319,10 @@ Lineage metadata is stored in `workflow_id`, `parent_trace_id`, `experiment_id`,
 - **Compare** selects lineage traces for the existing run comparison view.
 - **Evaluate** pins a trace to the evaluation dataset; pinned trace IDs are fetched directly so older traces are not missed by the default history window.
 - A configuration fingerprint is a compact hash of prompt, provider, model, and mode. It identifies an input/config change; it is not a semantic equivalence guarantee.
+
+
+## Public site and account workspace
+
+The public landing page is served at `/`, with an illustrative static product tour at `/demo`. Account sign-in and signup are available at `/login`; the authenticated trace workspace is at `/workspace`. Account auth uses Supabase Auth and workspace membership. Configure `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, and a dedicated `REASONLENS_SESSION_SECRET` in the deployment environment. Do not use the service-role key or session secret in client-side variables.
+
+The team-session resolver checks the signed session, active workspace, and current membership on each protected request. Existing workspace API-key sessions remain supported. Account login and signup are rate-limited through the shared Supabase rate-limit store.
