@@ -19,6 +19,9 @@ async function main(){
  const health=await request('/api/health');
  expect('health endpoint',health,200);
  if(!health.body||health.body.status!=='ok'||health.body.service!=='reasonlens')throw new Error('Health response has an unexpected shape');
+ const ready=await request('/api/health/ready');
+ expect('storage readiness endpoint',ready,200);
+ if(!ready.body||ready.body.status!=='ready'||ready.body.service!=='reasonlens')throw new Error('Readiness response has an unexpected shape');
 
  expect('trace read rejects missing credentials',await request('/api/traces'),401);
  expect('trace ingestion rejects missing credentials',await request('/api/traces',{method:'POST',body:'{}'}),401);
@@ -32,6 +35,6 @@ async function main(){
  expect('hosted Groq execution requires dashboard session',await request('/api/trace',{method:'POST',body:JSON.stringify({prompt:'ReasonLens smoke test',provider:'groq'})}),401);
  expect('invalid dashboard key is rejected',await request('/api/dashboard/login',{method:'POST',body:JSON.stringify({key:'reasonlens-invalid-smoke-test-key'})}),401);
 
- console.log('All '+9+' production smoke checks passed.');
+ console.log('All '+10+' production smoke checks passed.');
 }
 main().catch(error=>{console.error('Production smoke test failed:',error instanceof Error?error.message:error);process.exitCode=1;});
