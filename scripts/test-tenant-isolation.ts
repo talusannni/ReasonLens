@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import {getTrace} from '../lib/trace-store';
-import {getEvaluationRun} from '../lib/evaluation-store';
+import {getTrace,deleteTrace} from '../lib/trace-store';
+import {getEvaluationRun,deleteEvaluationRun} from '../lib/evaluation-store';
 import {rateLimitBucketKey} from '../lib/rate-limit';
 
 const originalFetch=globalThis.fetch;
@@ -53,10 +53,14 @@ async function main(){
   assert.equal(ownEvaluation?.name,'workspace-a evaluation','workspace A should read its own evaluation');
   const foreignEvaluation=await getEvaluationRun(evaluationRow.id,'workspace-b');
   assert.equal(foreignEvaluation,undefined,'workspace B must not read workspace A evaluation');
+  assert.equal(await deleteTrace(traceRow.id,'workspace-b'),false,'workspace B must not delete workspace A trace');
+  assert.equal(await deleteTrace(traceRow.id,'workspace-a'),true,'workspace A should be able to delete its own trace');
+  assert.equal(await deleteEvaluationRun(evaluationRow.id,'workspace-b'),false,'workspace B must not delete workspace A evaluation');
+  assert.equal(await deleteEvaluationRun(evaluationRow.id,'workspace-a'),true,'workspace A should be able to delete its own evaluation');
   assert(requestedScopes.every(scope=>scope.startsWith('eq.workspace-')),'every data read must include a workspace filter');
   assert.equal(rateLimitBucketKey('workspace-a:trace-write'),rateLimitBucketKey('workspace-a:trace-write'),'same rate-limit scope should be stable');
   assert.notEqual(rateLimitBucketKey('workspace-a:trace-write'),rateLimitBucketKey('workspace-b:trace-write'),'different workspaces must have different rate-limit buckets');
-  console.log('Tenant isolation tests passed (trace reads, evaluation reads, workspace filters, rate-limit scope separation).');
+  console.log('Tenant isolation tests passed (workspace-scoped trace/evaluation reads and deletes, workspace filters, rate-limit scope separation).');
  }finally{
   globalThis.fetch=originalFetch;
   if(originalUrl===undefined)delete process.env.SUPABASE_URL;else process.env.SUPABASE_URL=originalUrl;
