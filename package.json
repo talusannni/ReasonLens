@@ -19,7 +19,8 @@
     "workspace:create-key": "node scripts/create-workspace-api-key.mjs",
     "workspace:issue-key": "node scripts/issue-workspace-api-key.mjs",
     "workspace:revoke-key": "node scripts/revoke-workspace-api-key.mjs",
-    "workspace:retention": "node scripts/retention-maintenance.mjs"
+    "workspace:retention": "node scripts/retention-maintenance.mjs",
+    "test:workspace-security": "npx --yes tsx scripts/test-workspace-security.ts"
   },
   "dependencies": {
     "next": "15.5.27",
