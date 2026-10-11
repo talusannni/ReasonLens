@@ -4,6 +4,7 @@ import {runTrace} from '../../../lib/provider';
 import {getTrace,saveTrace} from '../../../lib/trace-store';
 import {dashboardWorkspaceId} from '../../../lib/dashboard-auth';
 import {readJsonBody} from '../../../lib/api-security';
+import {enforceWorkspaceRateLimit} from '../../../lib/rate-limit-response';
 import type {TraceMode} from '../../../lib/types';
 
 export async function POST(req:Request){
@@ -19,6 +20,11 @@ export async function POST(req:Request){
  if(provider!=='mock'&&provider!=='groq')return NextResponse.json({error:'provider must be mock or groq'},{status:400});
  const workspaceId=dashboardWorkspaceId(req);
  const persistTrace=workspaceId!==null;
+ if(workspaceId){
+  const limit=provider==='groq'?20:120;
+  const limited=await enforceWorkspaceRateLimit(workspaceId,provider==='groq'?'hosted-execution':'demo-execution',60,limit);
+  if(limited)return limited;
+ }
  if(provider==='groq'&&process.env.NODE_ENV==='production'&&!persistTrace){
   return NextResponse.json({error:'Connect to the ReasonLens dashboard before using the hosted Groq provider'},{status:401});
  }
