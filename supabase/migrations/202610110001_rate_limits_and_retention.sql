@@ -61,5 +61,58 @@ $$;
 revoke all on function public.reasonlens_consume_rate_limit(uuid, text, integer, integer) from public, anon, authenticated;
 grant execute on function public.reasonlens_consume_rate_limit(uuid, text, integer, integer) to service_role;
 
+create or replace function public.reasonlens_delete_workspace(p_workspace_id uuid)
+returns jsonb
+language plpgsql
+security invoker
+set search_path = public, pg_temp
+as $
+declare
+  v_slug text;
+  v_trace_count integer;
+  v_evaluation_count integer;
+  v_key_count integer;
+  v_member_count integer;
+  v_invitation_count integer;
+begin
+  select slug into v_slug
+  from public.reasonlens_workspaces
+  where id = p_workspace_id
+  for update;
+
+  if not found then
+    raise exception 'workspace not found';
+  end if;
+  if v_slug = 'default' or p_workspace_id = '00000000-0000-4000-8000-000000000001'::uuid then
+    raise exception 'default workspace cannot be deleted';
+  end if;
+
+  delete from public.reasonlens_evaluation_runs where workspace_id = p_workspace_id;
+  get diagnostics v_evaluation_count = row_count;
+  delete from public.reasonlens_traces where workspace_id = p_workspace_id;
+  get diagnostics v_trace_count = row_count;
+  delete from public.reasonlens_api_keys where workspace_id = p_workspace_id;
+  get diagnostics v_key_count = row_count;
+  delete from public.reasonlens_workspace_members where workspace_id = p_workspace_id;
+  get diagnostics v_member_count = row_count;
+  delete from public.reasonlens_workspace_invitations where workspace_id = p_workspace_id;
+  get diagnostics v_invitation_count = row_count;
+  delete from public.reasonlens_workspaces where id = p_workspace_id;
+
+  return jsonb_build_object(
+    'workspace_id', p_workspace_id,
+    'traces_deleted', v_trace_count,
+    'evaluation_runs_deleted', v_evaluation_count,
+    'api_keys_deleted', v_key_count,
+    'members_deleted', v_member_count,
+    'invitations_deleted', v_invitation_count
+  );
+end;
+$;
+
+revoke all on function public.reasonlens_delete_workspace(uuid) from public, anon, authenticated;
+grant execute on function public.reasonlens_delete_workspace(uuid) to service_role;
+
 comment on table public.reasonlens_rate_limit_windows is
   'Atomic per-workspace counters. Expired windows are removed by the maintenance script.';
+
