@@ -1,15 +1,18 @@
 import {NextResponse} from 'next/server';
 import {getTrace} from '../../../../lib/trace-store';
 import {resolveWorkspaceForCredential} from '../../../../lib/workspace-auth';
+import {enforceRateLimit,workspaceRateLimitScope} from '../../../../lib/rate-limit';
 
 async function authorized(req:Request):Promise<string|null>{
- const credential=req.headers.get('authorization')?.replace(/^Bearer\s+/i,'').trim();
+ const credential=req.headers.get('authorization')?.replace(/^Bearer\\s+/i,'').trim();
  return resolveWorkspaceForCredential(credential);
 }
 
 export async function GET(req:Request,{params}:{params:Promise<{id:string}>}){
  const workspaceId=await authorized(req);
  if(!workspaceId)return NextResponse.json({error:'Unauthorized'},{status:401});
+ const limited=await enforceRateLimit(req,workspaceRateLimitScope(workspaceId,'trace-detail-read'),120,60);
+ if(limited)return limited;
  try{
   const {id}=await params;
   if(!id||id.length>100)return NextResponse.json({error:'Invalid trace ID'},{status:400});
