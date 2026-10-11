@@ -381,7 +381,7 @@ The delete command refuses the default workspace, reports the affected row count
 - `GET /api/health/ready` verifies server-side Supabase connectivity and returns only a generic ready/not-ready status.
 - Run `npm run smoke:production` after a deployment; the GitHub Actions smoke workflow also runs on its configured schedule. Configure `VERCEL_AUTOMATION_BYPASS_SECRET` if Deployment Protection blocks the runner.
 - Configure an external monitor to alert on repeated readiness failures, HTTP 5xx increases, and smoke-test failures. Avoid logging prompts, answers, raw API keys, or session cookies.
-- Confirm the Supabase backup/PITR options enabled for the selected plan. Before release, document the RPO/RTO, verify that backups are completing, and rehearse restoring into a separate project. This repository does not yet automate backup creation or restore.
+- Confirm the Supabase backup/PITR options enabled for the selected plan. Before release, document the RPO/RTO, verify that backups are completing, and rehearse restoring into a separate project. Follow [the backup and recovery runbook](docs/operations/recovery.md). This repository does not yet automate backup creation or restore.
 
 ### Migration and public-release checklist
 
