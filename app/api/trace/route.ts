@@ -4,9 +4,18 @@ import {runTrace} from '../../../lib/provider';
 import {getTrace,saveTrace} from '../../../lib/trace-store';
 import {dashboardWorkspaceId} from '../../../lib/dashboard-auth';
 import {readJsonBody} from '../../../lib/api-security';
+import {enforceRateLimit,ipRateLimitScope,workspaceRateLimitScope} from '../../../lib/rate-limit';
 import type {TraceMode} from '../../../lib/types';
 
 export async function POST(req:Request){
+ const workspaceId=dashboardWorkspaceId(req);
+ const limited=await enforceRateLimit(
+  req,
+  workspaceId?workspaceRateLimitScope(workspaceId,'trace-execution'):ipRateLimitScope(req,'public-trace-execution'),
+  workspaceId?30:10,
+  60
+ );
+ if(limited)return limited;
  const parsed=await readJsonBody(req,64*1024);
  if(!parsed.ok)return NextResponse.json({error:parsed.error},{status:parsed.status});
  const body=parsed.value as Record<string,unknown>|null;
@@ -17,7 +26,6 @@ export async function POST(req:Request){
  if(prompt.length>12000)return NextResponse.json({error:'prompt must be 12000 characters or fewer'},{status:413});
  const provider=body.provider===undefined?'mock':body.provider;
  if(provider!=='mock'&&provider!=='groq')return NextResponse.json({error:'provider must be mock or groq'},{status:400});
- const workspaceId=dashboardWorkspaceId(req);
  const persistTrace=workspaceId!==null;
  if(provider==='groq'&&process.env.NODE_ENV==='production'&&!persistTrace){
   return NextResponse.json({error:'Connect to the ReasonLens dashboard before using the hosted Groq provider'},{status:401});
