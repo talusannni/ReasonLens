@@ -1,5 +1,5 @@
 import {NextResponse} from 'next/server';
-import {saveTrace,listTraces} from '../../../lib/trace-store';
+import {saveTrace,listTraces,getTrace} from '../../../lib/trace-store';
 import {readJsonBody} from '../../../lib/api-security';
 import {resolveWorkspaceForCredential} from '../../../lib/workspace-auth';
 import {enforceWorkspaceRateLimit} from '../../../lib/rate-limit-response';
@@ -10,11 +10,23 @@ async function authorized(req:Request):Promise<string|null>{
  return resolveWorkspaceForCredential(credential);
 }
 
+function isUuid(value:unknown):value is string{
+ return typeof value==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 function validTrace(value:unknown):value is Trace{
  if(!value||typeof value!=='object')return false;
  const t=value as Partial<Trace>;
  const metrics=t.metrics as Trace['metrics']|undefined;
- return typeof t.id==='string'&&t.id.length>0&&t.id.length<=100&&
+ const lineage=t.lineage as Trace['lineage']|undefined;
+ const lineageValid=t.lineage===undefined||(
+  !!lineage&&typeof lineage==='object'&&
+  (lineage.workflowId===undefined||isUuid(lineage.workflowId))&&
+  (lineage.parentTraceId===undefined||isUuid(lineage.parentTraceId))&&
+  (lineage.experimentId===undefined||isUuid(lineage.experimentId))&&
+  (lineage.configFingerprint===undefined||(typeof lineage.configFingerprint==='string'&&lineage.configFingerprint.length<=128))
+ );
+ return lineageValid&&typeof t.id==='string'&&t.id.length>0&&t.id.length<=100&&
   typeof t.createdAt==='string'&&Number.isFinite(Date.parse(t.createdAt))&&
   typeof t.provider==='string'&&t.provider.length<=100&&
   typeof t.model==='string'&&t.model.length<=200&&
@@ -47,6 +59,10 @@ export async function POST(req:Request){
  if(!parsed.ok)return NextResponse.json({error:parsed.error},{status:parsed.status});
  if(!validTrace(parsed.value))return NextResponse.json({error:'Invalid trace payload'},{status:400});
  try{
+  const parentTraceId=parsed.value.lineage?.parentTraceId;
+  if(parentTraceId&&!await getTrace(parentTraceId,workspaceId)){
+   return NextResponse.json({error:'Parent trace not found in this workspace'},{status:404});
+  }
   await saveTrace(parsed.value,workspaceId);
   return NextResponse.json({id:parsed.value.id,status:'accepted'},{status:202});
  }catch{
