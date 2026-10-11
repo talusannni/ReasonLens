@@ -66,7 +66,7 @@ returns jsonb
 language plpgsql
 security invoker
 set search_path = public, pg_temp
-as $
+as $$
 declare
   v_slug text;
   v_trace_count integer;
@@ -108,7 +108,7 @@ begin
     'invitations_deleted', v_invitation_count
   );
 end;
-$;
+$$;
 
 revoke all on function public.reasonlens_delete_workspace(uuid) from public, anon, authenticated;
 grant execute on function public.reasonlens_delete_workspace(uuid) to service_role;
