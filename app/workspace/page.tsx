@@ -152,8 +152,11 @@ export default function Home(){
   setConnected(false);setHistory([]);setHistoryTotal(0);setHistoryPage(1);setTrace(null);setEvaluationRuns([]);setEvaluationSelection([]);
  }
  async function signOut(){
+  // Keep the workspace behind the auth-loading gate while credentials are cleared.
+  // Otherwise the disconnected state briefly renders the legacy API-key form.
+  setAuthChecking(true);
   try{await disconnect();}
-  finally{window.location.assign('/login');}
+  finally{window.location.replace('/login');}
  }
  async function run(){
   setBusy(true);setError('');
