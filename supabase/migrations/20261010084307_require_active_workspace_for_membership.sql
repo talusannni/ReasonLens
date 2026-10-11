@@ -1,5 +1,4 @@
--- Ensure suspended workspaces fail membership-based RLS checks.
--- Preserve the private SECURITY DEFINER helpers and their restricted grants.
+-- Suspended workspaces must not pass membership-based RLS checks.
 create or replace function private.reasonlens_is_workspace_member(target_workspace_id uuid)
 returns boolean
 language sql
