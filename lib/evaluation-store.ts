@@ -34,3 +34,14 @@ export async function getEvaluationRun(id:string,workspaceId=DEFAULT_WORKSPACE_I
  const rows=await res.json(); if(!rows[0])return undefined;
  const row=rows[0]; return {id:row.id,name:row.name,createdAt:row.created_at,dataset:row.dataset,...row.summary,results:row.results};
 }
+
+export async function deleteEvaluationRun(id:string,workspaceId:string):Promise<boolean>{
+ const {url,key}=config();
+ const params=new URLSearchParams({id:'eq.'+id,workspace_id:'eq.'+workspaceId,select:'id'});
+ const res=await fetch(url+'/rest/v1/reasonlens_evaluation_runs?'+params.toString(),{
+  method:'DELETE',headers:{...headers(key),Prefer:'return=representation'},cache:'no-store'
+ });
+ if(!res.ok)throw new Error('Supabase evaluation delete failed: '+res.status);
+ const rows=await res.json();
+ return Array.isArray(rows)&&rows.length>0;
+}
