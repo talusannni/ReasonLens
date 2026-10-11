@@ -14,7 +14,7 @@ export async function GET(req:Request){
  const limited=await enforceWorkspaceRateLimit(workspaceId,'evaluation-read',60,120);
  if(limited)return limited;
  try{return NextResponse.json({runs:await listEvaluationRuns(workspaceId)},{headers:{'Cache-Control':'no-store'}});}
- catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Evaluation store unavailable'},{status:503});}
+ catch{return NextResponse.json({error:'Evaluation store unavailable'},{status:503});}
 }
 export async function POST(req:Request){
  const workspaceId=dashboardWorkspaceId(req);
@@ -48,5 +48,5 @@ export async function POST(req:Request){
   const run=evaluateDataset(name,cases,Array.from(traceMap.values()),undefined,randomUUID());
   await saveEvaluationRun(run,workspaceId);
   return NextResponse.json({run},{status:201});
- }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Evaluation failed'},{status:500});}
+ }catch{return NextResponse.json({error:'Evaluation failed'},{status:503});}
 }
