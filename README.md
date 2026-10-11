@@ -151,7 +151,11 @@ Run the local request-guard tests with:
 npm run test:api-security
 ```
 
-The trace and evaluation APIs now apply workspace scoping and support per-workspace bearer credentials. Do not market the deployment as fully production-ready multi-tenant SaaS until the remaining controls described above are implemented and tenant-isolation tests pass.
+The trace and evaluation APIs apply workspace scoping and support per-workspace bearer credentials. API requests are rate-limited using shared, atomic Supabase buckets (public demo execution: 10/minute per source IP; authenticated execution: 30/minute per workspace; trace ingestion: 120/minute per workspace; evaluation runs: 10/minute per workspace; dashboard reads and login have separate limits). Limits return HTTP 429 with retry metadata. The limiter fails closed in production if its shared store is unavailable.
+
+Dashboard-authenticated users can delete individual traces at `DELETE /api/dashboard/traces/{traceId}` and evaluation runs at `DELETE /api/evaluations/{runId}`. Both operations are constrained to the authenticated workspace. Automated age-based retention is not enabled by default; configure and validate a retention policy before enabling scheduled deletion.
+
+Run the tenant boundary regression suite with `npm run test:tenant-isolation`. It checks that trace and evaluation reads always include the workspace filter and that cross-workspace IDs do not return data. Do not market the deployment as fully production-ready multi-tenant SaaS until live cross-workspace tests, API-key lifecycle controls, quotas, retention/recovery, and the self-hosting audit are complete.
 
 ## Quality gate checks
 
