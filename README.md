@@ -366,7 +366,14 @@ Review the reported counts and cutoff, then add `--apply` to permanently delete 
 npm run workspace:retention -- --workspace acme-team --days 90 --apply
 ```
 
-Deletion is irreversible from the application. Take and verify a database backup before applying a production deletion. A deleted trace may be referenced by external systems; export any required records first. The current command does not purge a workspace itself or delete API keys. Workspace/account deletion and configurable retention policies still need an authenticated administration workflow.
+Deletion is irreversible from the application. Take and verify a database backup before applying a production deletion. A deleted trace may be referenced by external systems; export any required records first. The retention command does not purge a workspace or delete API keys. Workspace deletion is a separate, explicit, dry-run-first administrative command:
+
+```bash
+npm run workspace:delete -- --workspace acme-team
+npm run workspace:delete -- --workspace acme-team --apply
+```
+
+The delete command refuses the default workspace, reports the affected row counts, and calls a single database transaction for the actual deletion. Back up/export required records first; `--apply` permanently deletes the workspace, its traces, evaluation runs, API keys, members, invitations, and associated rate-limit counters. This is an operator CLI, not yet an authenticated in-product account-deletion workflow. Configurable retention policies and self-service deletion still need an administration workflow.
 
 ### Health, monitoring, backup and recovery
 
