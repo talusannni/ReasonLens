@@ -2,10 +2,11 @@ import {NextResponse} from 'next/server';
 import {saveTrace,listTraces} from '../../../lib/trace-store';
 import {readJsonBody} from '../../../lib/api-security';
 import {resolveWorkspaceForCredential} from '../../../lib/workspace-auth';
+import {enforceWorkspaceRateLimit} from '../../../lib/rate-limit-response';
 import type {Trace} from '../../../lib/types';
 
 async function authorized(req:Request):Promise<string|null>{
- const credential=req.headers.get('authorization')?.replace(/^Bearer\s+/i,'').trim();
+ const credential=req.headers.get('authorization')?.replace(/^Bearer\\s+/i,'').trim();
  return resolveWorkspaceForCredential(credential);
 }
 
@@ -31,6 +32,8 @@ function validTrace(value:unknown):value is Trace{
 export async function GET(req:Request){
  const workspaceId=await authorized(req);
  if(!workspaceId)return NextResponse.json({error:'Unauthorized'},{status:401});
+ const limited=await enforceWorkspaceRateLimit(workspaceId,'trace-read',60,300);
+ if(limited)return limited;
  try{return NextResponse.json({traces:await listTraces(workspaceId)},{headers:{'Cache-Control':'no-store'}});}
  catch{return NextResponse.json({error:'Trace store unavailable'},{status:503});}
 }
@@ -38,6 +41,8 @@ export async function GET(req:Request){
 export async function POST(req:Request){
  const workspaceId=await authorized(req);
  if(!workspaceId)return NextResponse.json({error:'Unauthorized'},{status:401});
+ const limited=await enforceWorkspaceRateLimit(workspaceId,'trace-ingest',60,120);
+ if(limited)return limited;
  const parsed=await readJsonBody(req,1024*1024);
  if(!parsed.ok)return NextResponse.json({error:parsed.error},{status:parsed.status});
  if(!validTrace(parsed.value))return NextResponse.json({error:'Invalid trace payload'},{status:400});
