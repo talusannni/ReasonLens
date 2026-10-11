@@ -3,13 +3,13 @@ import {randomUUID} from 'crypto';
 import {CORE_RAG_DATASET,evaluateDataset} from '../../../lib/evaluation';
 import {saveEvaluationRun,listEvaluationRuns} from '../../../lib/evaluation-store';
 import {getTrace,listTraces} from '../../../lib/trace-store';
-import {dashboardWorkspaceId} from '../../../lib/dashboard-auth';
+import {resolveDashboardWorkspaceId} from '../../../lib/dashboard-auth';
 import {readJsonBody} from '../../../lib/api-security';
 import {enforceRateLimit,workspaceRateLimitScope} from '../../../lib/rate-limit';
 import type {Trace} from '../../../lib/types';
 
 export async function GET(req:Request){
- const workspaceId=dashboardWorkspaceId(req);
+ const workspaceId=await resolveDashboardWorkspaceId(req);
  if(!workspaceId)return NextResponse.json({error:'Dashboard authentication required'},{status:401});
  const limited=await enforceRateLimit(req,workspaceRateLimitScope(workspaceId,'evaluation-list'),60,60);
  if(limited)return limited;
@@ -17,7 +17,7 @@ export async function GET(req:Request){
  catch{return NextResponse.json({error:'Evaluation store unavailable'},{status:503});}
 }
 export async function POST(req:Request){
- const workspaceId=dashboardWorkspaceId(req);
+ const workspaceId=await resolveDashboardWorkspaceId(req);
  if(!workspaceId)return NextResponse.json({error:'Dashboard authentication required'},{status:401});
  const limited=await enforceRateLimit(req,workspaceRateLimitScope(workspaceId,'evaluation-run'),10,60);
  if(limited)return limited;
