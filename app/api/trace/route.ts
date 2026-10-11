@@ -22,8 +22,12 @@ export async function POST(req:Request){
  const persistTrace=workspaceId!==null;
  if(workspaceId){
   const limit=provider==='groq'?20:120;
-  const limited=await enforceWorkspaceRateLimit(workspaceId,provider==='groq'?'hosted-execution':'demo-execution',60,limit);
+  const bucket=provider==='groq'?'hosted-execution':'demo-execution';
+  const limited=await enforceWorkspaceRateLimit(workspaceId,bucket,60,limit);
   if(limited)return limited;
+  const dailyLimit=provider==='groq'?500:5000;
+  const quota=await enforceWorkspaceRateLimit(workspaceId,bucket+'-daily',86400,dailyLimit);
+  if(quota)return quota;
  }
  if(provider==='groq'&&process.env.NODE_ENV==='production'&&!persistTrace){
   return NextResponse.json({error:'Connect to the ReasonLens dashboard before using the hosted Groq provider'},{status:401});
