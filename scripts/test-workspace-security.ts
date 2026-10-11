@@ -3,20 +3,24 @@ import {getTrace} from '../lib/trace-store';
 import {getEvaluationRun} from '../lib/evaluation-store';
 import {consumeWorkspaceRateLimit} from '../lib/workspace-rate-limit';
 import {enforceWorkspaceRateLimit} from '../lib/rate-limit-response';
+import {POST as ingestTrace} from '../app/api/traces/route';
 
 async function main(){
  const previousUrl=process.env.SUPABASE_URL;
  const previousKey=process.env.SUPABASE_SERVICE_ROLE_KEY;
+ const previousIngestKey=process.env.REASONLENS_INGEST_KEY;
  process.env.SUPABASE_URL='https://supabase.test';
  process.env.SUPABASE_SERVICE_ROLE_KEY='service-test-key';
  const originalFetch=globalThis.fetch;
  const requests:string[]=[];
+ const writes:string[]=[];
  try{
   globalThis.fetch=(async (input:RequestInfo|URL,init?:RequestInit)=>{
    const url=String(input);requests.push(url);
    const parsed=new URL(url);
    const workspace=parsed.searchParams.get('workspace_id');
    if(parsed.pathname.endsWith('/reasonlens_traces')){
+    if(init?.method==='POST'){writes.push(url);return new Response(null,{status:201});}
     const rows=workspace==='eq.workspace-a'?[{
      id:'trace-a',created_at:'2026-10-10T00:00:00.000Z',provider:'mock',model:'mock',prompt:'p',mode:'chat',answer:'a',status:'completed',
      metrics:{latencyMs:1,inputTokens:1,outputTokens:1,estimatedCostUsd:0},nodes:[],edges:[],workspace_id:'workspace-a'
@@ -32,7 +36,9 @@ async function main(){
     return new Response(JSON.stringify(rows),{status:200,headers:{'Content-Type':'application/json'}});
    }
    if(parsed.pathname.endsWith('/rpc/reasonlens_consume_rate_limit')){
-    return new Response(JSON.stringify([{allowed:false,remaining:0,reset_at:'2026-10-11T10:00:00.000Z'}]),{status:200,headers:{'Content-Type':'application/json'}});
+    const body=JSON.parse(String(init?.body||'{}')) as {p_bucket?:string};
+    const allowed=body.p_bucket!=='test';
+    return new Response(JSON.stringify([{allowed,remaining:allowed?119:0,reset_at:new Date(Date.now()+60000).toISOString()}]),{status:200,headers:{'Content-Type':'application/json'}});
    }
    throw new Error('Unexpected fetch: '+url);
   }) as typeof fetch;
@@ -55,6 +61,19 @@ async function main(){
   assert.equal(limitedResponse?.status,429,'exhausted limit should return HTTP 429');
   assert.equal(limitedResponse?.headers.get('Retry-After')!==null,true,'429 should include Retry-After');
 
+  process.env.REASONLENS_INGEST_KEY='legacy-workspace-test-key';
+  const crossWorkspaceParent={
+   id:'trace-new',createdAt:'2026-10-10T00:00:00.000Z',provider:'mock',model:'mock',prompt:'p',mode:'chat',answer:'a',status:'completed',
+   metrics:{latencyMs:1,inputTokens:1,outputTokens:1,estimatedCostUsd:0},nodes:[],edges:[],
+   lineage:{workflowId:'11111111-1111-4111-8111-111111111111',parentTraceId:'22222222-2222-4222-8222-222222222222'}
+  };
+  const parentResponse=await ingestTrace(new Request('https://reasonlens.test/api/traces',{
+   method:'POST',headers:{Authorization:'Bearer legacy-workspace-test-key','Content-Type':'application/json'},
+   body:JSON.stringify(crossWorkspaceParent)
+  }));
+  assert.equal(parentResponse.status,404,'ingestion must reject a parent trace outside the authenticated workspace');
+  assert.equal(writes.length,0,'cross-workspace parent rejection must happen before persistence');
+
   globalThis.fetch=(async()=>{throw new Error('database unavailable');}) as typeof fetch;
   const unavailable=await enforceWorkspaceRateLimit('workspace-a','test',60,10);
   assert.equal(unavailable?.status,503,'rate-limit backend failure must fail closed');
@@ -63,6 +82,7 @@ async function main(){
   globalThis.fetch=originalFetch;
   if(previousUrl===undefined)delete process.env.SUPABASE_URL;else process.env.SUPABASE_URL=previousUrl;
   if(previousKey===undefined)delete process.env.SUPABASE_SERVICE_ROLE_KEY;else process.env.SUPABASE_SERVICE_ROLE_KEY=previousKey;
+  if(previousIngestKey===undefined)delete process.env.REASONLENS_INGEST_KEY;else process.env.REASONLENS_INGEST_KEY=previousIngestKey;
  }
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});
