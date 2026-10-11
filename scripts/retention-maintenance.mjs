@@ -23,10 +23,27 @@ async function countOld(table,workspaceId){
  if(total==='*'||!Number.isFinite(Number(total)))throw new Error(table+' count was not exact.');
  return Number(total);
 }
+async function countExpiredRateWindows(){
+ const rateCutoff=new Date(Date.now()-2*24*60*60*1000).toISOString();
+ const params=new URLSearchParams({select:'workspace_id',window_start:'lt.'+rateCutoff,limit:'1'});
+ const response=await fetch(url+'/rest/v1/reasonlens_rate_limit_windows?'+params,{headers:{...headers,Prefer:'count=exact',Range:'0-0'},cache:'no-store'});
+ if(!response.ok)throw new Error('Rate-limit window count failed: '+response.status);
+ const range=response.headers.get('content-range');
+ if(!range||!range.includes('/'))throw new Error('Rate-limit window count was not exact.');
+ const total=range.split('/')[1];
+ if(total==='*'||!Number.isFinite(Number(total)))throw new Error('Rate-limit window count was not exact.');
+ return Number(total);
+}
 async function deleteOld(table,workspaceId){
  const params=new URLSearchParams({workspace_id:'eq.'+workspaceId,created_at:'lt.'+cutoff});
  const response=await fetch(url+'/rest/v1/'+table+'?'+params,{method:'DELETE',headers:{...headers,Prefer:'return=minimal'},cache:'no-store'});
  if(!response.ok)throw new Error(table+' deletion failed: '+response.status+' '+(await response.text()).slice(0,200));
+}
+async function deleteExpiredRateWindows(){
+ const rateCutoff=new Date(Date.now()-2*24*60*60*1000).toISOString();
+ const params=new URLSearchParams({window_start:'lt.'+rateCutoff});
+ const response=await fetch(url+'/rest/v1/reasonlens_rate_limit_windows?'+params,{method:'DELETE',headers:{...headers,Prefer:'return=minimal'},cache:'no-store'});
+ if(!response.ok)throw new Error('Rate-limit window cleanup failed: '+response.status+' '+(await response.text()).slice(0,200));
 }
 async function main(){
  const params=new URLSearchParams({select:'id,name,status',slug:'eq.'+slug,limit:'1'});
@@ -36,13 +53,16 @@ async function main(){
  if(!workspace)throw new Error('Workspace not found.');
  const traceCount=await countOld('reasonlens_traces',workspace.id);
  const evaluationCount=await countOld('reasonlens_evaluation_runs',workspace.id);
+ const rateWindowCount=await countExpiredRateWindows();
  console.log('Workspace: '+workspace.name+' ('+slug+')');
  console.log('Retention cutoff: '+cutoff+' ('+days+' days)');
  console.log('Old traces: '+traceCount);
  console.log('Old evaluation runs: '+evaluationCount);
+ console.log('Expired rate-limit windows older than 2 days (all workspaces): '+rateWindowCount);
  if(!apply){console.log('Dry run only. Re-run with --apply to permanently delete these rows.');return;}
  await deleteOld('reasonlens_evaluation_runs',workspace.id);
  await deleteOld('reasonlens_traces',workspace.id);
+ await deleteExpiredRateWindows();
  console.log('Retention deletion completed.');
 }
 main().catch(e=>{console.error(e instanceof Error?e.message:e);process.exitCode=1;});
