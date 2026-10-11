@@ -50,6 +50,6 @@ export async function POST(req:Request){
   if(persistTrace&&workspaceId)await saveTrace(trace,workspaceId);
   return NextResponse.json(trace,{headers:{'Cache-Control':'no-store'}});
  }catch(e){
-  return NextResponse.json({error:e instanceof Error?e.message:'Trace execution failed'},{status:503});
+  return NextResponse.json({error:'Trace execution failed'},{status:503,headers:{'Cache-Control':'no-store'}});
  }
 }
