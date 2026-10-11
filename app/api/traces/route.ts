@@ -55,6 +55,8 @@ export async function POST(req:Request){
  if(!workspaceId)return NextResponse.json({error:'Unauthorized'},{status:401});
  const limited=await enforceWorkspaceRateLimit(workspaceId,'trace-ingest',60,120);
  if(limited)return limited;
+ const quota=await enforceWorkspaceRateLimit(workspaceId,'trace-ingest-daily',86400,10000);
+ if(quota)return quota;
  const parsed=await readJsonBody(req,1024*1024);
  if(!parsed.ok)return NextResponse.json({error:parsed.error},{status:parsed.status});
  if(!validTrace(parsed.value))return NextResponse.json({error:'Invalid trace payload'},{status:400});
