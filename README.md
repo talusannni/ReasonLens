@@ -325,11 +325,11 @@ Workspace-authenticated endpoints use atomic Postgres counters, shared across se
 
 | Operation | Limit |
 |---|---:|
-| Trace ingestion | 120 requests per minute per workspace |
+| Trace ingestion | 120 requests per minute and 10,000 per day per workspace |
 | Trace reads | 300 requests per minute per workspace |
-| Hosted Groq execution | 20 requests per minute per workspace |
-| Demo execution for an authenticated workspace | 120 requests per minute per workspace |
-| Evaluation runs | 10 requests per minute per workspace |
+| Hosted Groq execution | 20 requests per minute and 500 per day per workspace |
+| Demo execution for an authenticated workspace | 120 requests per minute and 5,000 per day per workspace |
+| Evaluation runs | 10 requests per minute and 100 per day per workspace |
 | Evaluation reads | 120 requests per minute per workspace |
 
 Limited requests return HTTP `429`, `Retry-After`, and `X-RateLimit-*` headers. If the shared rate-limit store is unavailable, protected operations fail closed with HTTP `503`. The limits are initial safeguards, not billing quotas; adjust them to match measured workload and provider spend before opening signups.
@@ -381,7 +381,7 @@ Deletion is irreversible from the application. Take and verify a database backup
 1. Back up the database and confirm the restore procedure before applying schema changes.
 2. Apply SQL migrations in order, including the workspace foundation and rate-limit migration, in a staging Supabase project first.
 3. Run CI, the workspace-isolation/rate-limit tests, readiness check, and smoke suite against staging.
-4. Verify API-key rotation/revocation and attempt cross-workspace trace/evaluation reads with two independent keys.
+4. Run `npm run test:workspace-security`; verify API-key rotation/revocation and attempt cross-workspace trace/evaluation reads with two independent keys.
 5. Review environment variables and deployment logs; keep the Supabase service-role key, session signing secret, Groq key, and workspace API keys server-side only.
 6. Review the Apache-2.0 license, dependency notices, migration instructions, incident reporting/security contact, and self-hosting configuration.
 7. Only then promote the release. The hosted product still needs authenticated workspace administration, immediate session invalidation, account deletion, configurable retention, tested restore automation, and real two-tenant integration tests before being represented as a complete multi-tenant SaaS.
