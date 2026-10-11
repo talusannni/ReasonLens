@@ -5,17 +5,24 @@ import {saveEvaluationRun,listEvaluationRuns} from '../../../lib/evaluation-stor
 import {getTrace,listTraces} from '../../../lib/trace-store';
 import {dashboardWorkspaceId} from '../../../lib/dashboard-auth';
 import {readJsonBody} from '../../../lib/api-security';
+import {enforceWorkspaceRateLimit} from '../../../lib/rate-limit-response';
 import type {Trace} from '../../../lib/types';
 
 export async function GET(req:Request){
  const workspaceId=dashboardWorkspaceId(req);
  if(!workspaceId)return NextResponse.json({error:'Dashboard authentication required'},{status:401});
+ const limited=await enforceWorkspaceRateLimit(workspaceId,'evaluation-read',60,120);
+ if(limited)return limited;
  try{return NextResponse.json({runs:await listEvaluationRuns(workspaceId)},{headers:{'Cache-Control':'no-store'}});}
- catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Evaluation store unavailable'},{status:503});}
+ catch{return NextResponse.json({error:'Evaluation store unavailable'},{status:503});}
 }
 export async function POST(req:Request){
  const workspaceId=dashboardWorkspaceId(req);
  if(!workspaceId)return NextResponse.json({error:'Dashboard authentication required'},{status:401});
+ const limited=await enforceWorkspaceRateLimit(workspaceId,'evaluation-run',60,10);
+ if(limited)return limited;
+ const quota=await enforceWorkspaceRateLimit(workspaceId,'evaluation-run-daily',86400,100);
+ if(quota)return quota;
  const parsed=await readJsonBody(req,256*1024);
  if(!parsed.ok)return NextResponse.json({error:parsed.error},{status:parsed.status});
  try{
@@ -43,5 +50,5 @@ export async function POST(req:Request){
   const run=evaluateDataset(name,cases,Array.from(traceMap.values()),undefined,randomUUID());
   await saveEvaluationRun(run,workspaceId);
   return NextResponse.json({run},{status:201});
- }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Evaluation failed'},{status:500});}
+ }catch{return NextResponse.json({error:'Evaluation failed'},{status:503});}
 }

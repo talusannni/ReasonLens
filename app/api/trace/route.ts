@@ -4,6 +4,7 @@ import {runTrace} from '../../../lib/provider';
 import {getTrace,saveTrace} from '../../../lib/trace-store';
 import {dashboardWorkspaceId} from '../../../lib/dashboard-auth';
 import {readJsonBody} from '../../../lib/api-security';
+import {enforceWorkspaceRateLimit} from '../../../lib/rate-limit-response';
 import type {TraceMode} from '../../../lib/types';
 
 export async function POST(req:Request){
@@ -19,6 +20,15 @@ export async function POST(req:Request){
  if(provider!=='mock'&&provider!=='groq')return NextResponse.json({error:'provider must be mock or groq'},{status:400});
  const workspaceId=dashboardWorkspaceId(req);
  const persistTrace=workspaceId!==null;
+ if(workspaceId){
+  const limit=provider==='groq'?20:120;
+  const bucket=provider==='groq'?'hosted-execution':'demo-execution';
+  const limited=await enforceWorkspaceRateLimit(workspaceId,bucket,60,limit);
+  if(limited)return limited;
+  const dailyLimit=provider==='groq'?500:5000;
+  const quota=await enforceWorkspaceRateLimit(workspaceId,bucket+'-daily',86400,dailyLimit);
+  if(quota)return quota;
+ }
  if(provider==='groq'&&process.env.NODE_ENV==='production'&&!persistTrace){
   return NextResponse.json({error:'Connect to the ReasonLens dashboard before using the hosted Groq provider'},{status:401});
  }
@@ -44,6 +54,6 @@ export async function POST(req:Request){
   if(persistTrace&&workspaceId)await saveTrace(trace,workspaceId);
   return NextResponse.json(trace,{headers:{'Cache-Control':'no-store'}});
  }catch(e){
-  return NextResponse.json({error:e instanceof Error?e.message:'Trace execution failed'},{status:503});
+  return NextResponse.json({error:'Trace execution failed'},{status:503,headers:{'Cache-Control':'no-store'}});
  }
 }
