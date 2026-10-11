@@ -124,3 +124,14 @@ export async function listTraces(workspaceId=DEFAULT_WORKSPACE_ID):Promise<Trace
 function toTrace(row:any):Trace{
  return {id:row.id,createdAt:row.created_at,provider:row.provider,model:row.model,prompt:row.prompt,mode:row.mode,answer:row.answer,status:row.status,metrics:row.metrics,nodes:row.nodes,edges:row.edges,lineage:{workflowId:row.workflow_id||row.id,parentTraceId:row.parent_trace_id||undefined,experimentId:row.experiment_id||undefined,configFingerprint:row.config_fingerprint||undefined}};
 }
+
+export async function deleteTrace(id:string,workspaceId:string):Promise<boolean>{
+ const {url,key}=config();
+ const params=new URLSearchParams({id:'eq.'+id,workspace_id:'eq.'+workspaceId,select:'id'});
+ const res=await fetch(url+'/rest/v1/reasonlens_traces?'+params.toString(),{
+  method:'DELETE',headers:{...headers(key),Prefer:'return=representation'},cache:'no-store'
+ });
+ if(!res.ok)throw new Error('Supabase trace delete failed: '+res.status);
+ const rows=await res.json();
+ return Array.isArray(rows)&&rows.length>0;
+}
