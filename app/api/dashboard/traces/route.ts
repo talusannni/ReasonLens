@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server';
 import { dashboardWorkspaceId } from '../../../../lib/dashboard-auth';
 import { listTracePage } from '../../../../lib/trace-store';
+import { enforceRateLimit,workspaceRateLimitScope } from '../../../../lib/rate-limit';
 
 const allowed=(value:string|null,values:string[])=>value&&values.includes(value)?value:undefined;
 
 export async function GET(req:Request){
   const workspaceId=dashboardWorkspaceId(req);
   if(!workspaceId)return NextResponse.json({error:'Dashboard authentication required'},{status:401});
+  const limited=await enforceRateLimit(req,workspaceRateLimitScope(workspaceId,'dashboard-trace-list'),60,60);
+  if(limited)return limited;
   try{
     const params=new URL(req.url).searchParams;
     const page=Math.min(100000,Math.max(1,Number.parseInt(params.get('page')||'1',10)||1));
@@ -25,5 +28,5 @@ export async function GET(req:Request){
       execution:allowed(params.get('execution'),['retrieval-only','full-pipeline','llm-executed','partial','no-llm'])||undefined
     },workspaceId);
     return NextResponse.json(result,{headers:{'Cache-Control':'no-store'}});
-  }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Trace store unavailable'},{status:503});}
+  }catch{return NextResponse.json({error:'Trace store unavailable'},{status:503});}
 }
