@@ -315,3 +315,73 @@ Lineage metadata is stored in `workflow_id`, `parent_trace_id`, `experiment_id`,
 - **Compare** selects lineage traces for the existing run comparison view.
 - **Evaluate** pins a trace to the evaluation dataset; pinned trace IDs are fetched directly so older traces are not missed by the default history window.
 - A configuration fingerprint is a compact hash of prompt, provider, model, and mode. It identifies an input/config change; it is not a semantic equivalence guarantee.
+
+
+## Workspace security and operations (release candidate)
+
+### Rate limits
+
+Workspace-authenticated endpoints use atomic Postgres counters, shared across serverless instances. Current defaults are:
+
+| Operation | Limit |
+|---|---:|
+| Trace ingestion | 120 requests per minute per workspace |
+| Trace reads | 300 requests per minute per workspace |
+| Hosted Groq execution | 20 requests per minute per workspace |
+| Demo execution for an authenticated workspace | 120 requests per minute per workspace |
+| Evaluation runs | 10 requests per minute per workspace |
+| Evaluation reads | 120 requests per minute per workspace |
+
+Limited requests return HTTP `429`, `Retry-After`, and `X-RateLimit-*` headers. If the shared rate-limit store is unavailable, protected operations fail closed with HTTP `503`. The limits are initial safeguards, not billing quotas; adjust them to match measured workload and provider spend before opening signups.
+
+Apply `supabase/migrations/202610110001_rate_limits_and_retention.sql` before deploying code that enables these limits. Do not deploy the application code ahead of the migration: authenticated APIs intentionally return `503` instead of bypassing protection when the rate-limit table or RPC is missing.
+
+### API-key rotation and revocation
+
+Issue a replacement key before revoking an existing key:
+
+```bash
+npm run workspace:issue-key -- --slug acme-team --name "Production SDK"
+```
+
+The key is printed once; put it in the consuming service's secret manager and verify ingestion with it. Then revoke the old key by its UUID (available from the trusted database/admin record):
+
+```bash
+npm run workspace:revoke-key -- --key-id <key-uuid>
+```
+
+Revocation takes effect on subsequent authentication checks. Existing signed dashboard sessions expire within seven days; revoking a key does not currently invalidate already-issued sessions immediately. Do not share or log API key values.
+
+### Retention and deletion
+
+The maintenance command is **dry-run by default** and requires a specific workspace:
+
+```bash
+npm run workspace:retention -- --workspace acme-team --days 90
+```
+
+Review the reported counts and cutoff, then add `--apply` to permanently delete old evaluation runs and traces:
+
+```bash
+npm run workspace:retention -- --workspace acme-team --days 90 --apply
+```
+
+Deletion is irreversible from the application. Take and verify a database backup before applying a production deletion. A deleted trace may be referenced by external systems; export any required records first. The current command does not purge a workspace itself or delete API keys. Workspace/account deletion and configurable retention policies still need an authenticated administration workflow.
+
+### Health, monitoring, backup and recovery
+
+- `GET /api/health` is a liveness check and does not require the database.
+- `GET /api/health/ready` verifies server-side Supabase connectivity and returns only a generic ready/not-ready status.
+- Run `npm run smoke:production` after a deployment; the GitHub Actions smoke workflow also runs on its configured schedule. Configure `VERCEL_AUTOMATION_BYPASS_SECRET` if Deployment Protection blocks the runner.
+- Configure an external monitor to alert on repeated readiness failures, HTTP 5xx increases, and smoke-test failures. Avoid logging prompts, answers, raw API keys, or session cookies.
+- Confirm the Supabase backup/PITR options enabled for the selected plan. Before release, document the RPO/RTO, verify that backups are completing, and rehearse restoring into a separate project. This repository does not yet automate backup creation or restore.
+
+### Migration and public-release checklist
+
+1. Back up the database and confirm the restore procedure before applying schema changes.
+2. Apply SQL migrations in order, including the workspace foundation and rate-limit migration, in a staging Supabase project first.
+3. Run CI, the workspace-isolation/rate-limit tests, readiness check, and smoke suite against staging.
+4. Verify API-key rotation/revocation and attempt cross-workspace trace/evaluation reads with two independent keys.
+5. Review environment variables and deployment logs; keep the Supabase service-role key, session signing secret, Groq key, and workspace API keys server-side only.
+6. Review the Apache-2.0 license, dependency notices, migration instructions, incident reporting/security contact, and self-hosting configuration.
+7. Only then promote the release. The hosted product still needs authenticated workspace administration, immediate session invalidation, account deletion, configurable retention, tested restore automation, and real two-tenant integration tests before being represented as a complete multi-tenant SaaS.
