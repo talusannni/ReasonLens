@@ -34,4 +34,5 @@ jobs:
       - run: npm run test:trace-execution
       - run: npm run test:api-security
       - run: npm run test:workspace-security
+      - run: npm run test:workspace-migration
       - run: npm run build
