@@ -2,8 +2,11 @@ import {NextResponse} from 'next/server';
 import {readJsonBody} from '../../../../lib/api-security';
 import {createDashboardSession} from '../../../../lib/dashboard-auth';
 import {markWorkspaceCredentialUsed,resolveWorkspaceForCredential} from '../../../../lib/workspace-auth';
+import {enforceRateLimit,ipRateLimitScope} from '../../../../lib/rate-limit';
 
 export async function POST(req:Request){
+ const limited=await enforceRateLimit(req,ipRateLimitScope(req,'dashboard-login'),10,60);
+ if(limited)return limited;
  const parsed=await readJsonBody(req,16*1024);
  if(!parsed.ok)return NextResponse.json({error:parsed.error},{status:parsed.status});
  const body=parsed.value as Record<string,unknown>|null;
