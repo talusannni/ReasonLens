@@ -149,6 +149,10 @@ export default function Home(){
   await fetch('/api/dashboard/login',{method:'DELETE'});
   setConnected(false);setHistory([]);setHistoryTotal(0);setHistoryPage(1);setTrace(null);setEvaluationRuns([]);setEvaluationSelection([]);
  }
+ async function signOut(){
+  try{await disconnect();}
+  finally{window.location.assign('/login');}
+ }
  async function run(){
   setBusy(true);setError('');
   try{
@@ -195,7 +199,7 @@ export default function Home(){
    </div>
   </aside>
   <section className="content">
-   <header className="topbar"><div><div className="eyebrow">AI OBSERVABILITY WORKSPACE</div><h2>{view==='workspace'?'Trace explorer':view==='history'?'Trace history':view==='analysis'?'Run comparison':view==='evaluations'?'Evaluations':'Configuration'}</h2></div><div className="top-actions"><span className="connection"><i/> Local-first</span>{trace&&<button className="ghost" onClick={exportTrace}>Export JSON</button>}</div></header>
+   <header className="topbar"><div><div className="eyebrow">AI OBSERVABILITY WORKSPACE</div><h2>{view==='workspace'?'Trace explorer':view==='history'?'Trace history':view==='analysis'?'Run comparison':view==='evaluations'?'Evaluations':'Configuration'}</h2></div><div className="top-actions">{connected&&<button className="ghost" onClick={()=>void signOut()}>Sign out</button>}<span className="connection"><i/> Local-first</span>{trace&&<button className="ghost" onClick={exportTrace}>Export JSON</button>}</div></header>
 
    {!connected&&<section className="connect-card"><div><div className="eyebrow">PERSISTED TRACE STORE</div><h3>Connect to ReasonLens</h3><p>Sign in to a team workspace, create a workspace, or connect with an existing workspace API key.</p></div><div className="connect-row"><button className={authMode==='sign-in'?'primary':'ghost'} onClick={()=>{setAuthMode('sign-in');setError('');setConnectNotice('');}}>Team sign in</button><button className={authMode==='sign-up'?'primary':'ghost'} onClick={()=>{setAuthMode('sign-up');setError('');setConnectNotice('');}}>Create account</button><button className={authMode==='key'?'primary':'ghost'} onClick={()=>{setAuthMode('key');setError('');setConnectNotice('');}}>API key</button></div>{authMode==='key'?<div className="connect-row"><input type="password" value={dashboardKey} onChange={e=>setDashboardKey(e.target.value)} onKeyDown={e=>e.key==='Enter'&&connect()} placeholder="ReasonLens workspace API key"/><button className="primary" onClick={connect} disabled={!dashboardKey}>Connect</button></div>:<div className="connect-row">{authMode==='sign-up'&&<input type="text" value={workspaceName} onChange={e=>setWorkspaceName(e.target.value)} placeholder="Workspace name (optional)" maxLength={80}/>}<input type="email" autoComplete="email" value={accountEmail} onChange={e=>setAccountEmail(e.target.value)} placeholder="Email address" maxLength={320}/><input type="password" autoComplete={authMode==='sign-up'?'new-password':'current-password'} value={accountPassword} onChange={e=>setAccountPassword(e.target.value)} onKeyDown={e=>e.key==='Enter'&&(authMode==='sign-up'?createAccount():connectWithAccount())} placeholder="Password (at least 8 characters)" maxLength={128}/><button className="primary" onClick={authMode==='sign-up'?createAccount:connectWithAccount} disabled={!accountEmail.trim()||accountPassword.length<8}>{authMode==='sign-up'?'Create workspace':'Sign in'}</button></div>}{connectNotice&&<div className="connect-notice" role="status">{connectNotice}</div>}{error&&<div className="error">{error}</div>}</section>}
 
