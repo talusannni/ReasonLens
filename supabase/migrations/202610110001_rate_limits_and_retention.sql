@@ -11,6 +11,7 @@ create index if not exists reasonlens_rate_limit_windows_window_idx
   on public.reasonlens_rate_limit_windows(window_start);
 
 alter table public.reasonlens_rate_limit_windows enable row level security;
+grant select, insert, update, delete on table public.reasonlens_rate_limit_windows to service_role;
 create policy deny_direct_client_access on public.reasonlens_rate_limit_windows
   for all to anon, authenticated using (false) with check (false);
 
