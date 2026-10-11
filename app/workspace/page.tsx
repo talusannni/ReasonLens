@@ -62,12 +62,12 @@ export default function Home(){
  function toggleSidebar(){setSidebarCollapsed(v=>{const next=!v;localStorage.setItem('reasonlens-sidebar-collapsed',next?'1':'0');return next;});}
 
 
- async function loadPersisted(page=historyPage){
+ async function loadPersisted(page=historyPage):Promise<boolean|null>{
   setLoadingHistory(true);
   try{
    const params=new URLSearchParams({page:String(page),pageSize:String(historyPageSize),search,mode:historyModeFilter,status:historyStatusFilter,provider:historyProviderFilter,model:historyModelFilter,days:historyTimeFilter,sort:historySort,execution:historyExecutionFilter});
    const r=await fetch('/api/dashboard/traces?'+params.toString(),{cache:'no-store'});
-   if(r.status===401){setConnected(false);window.location.replace('/login');return;}
+   if(r.status===401){setConnected(false);window.location.replace('/login');return false;}
    const d=await r.json();
    if(!r.ok)throw new Error(d.error||'Could not load traces');
    setHistory(Array.isArray(d.traces)?d.traces:[]);
@@ -75,10 +75,11 @@ export default function Home(){
    setHistoryFamilyCounts(d.familyCounts&&typeof d.familyCounts==='object'?d.familyCounts:{});
    setHistoryPage(Number(d.page)||page);
    setConnected(true);
-  }catch(e){setError(e instanceof Error?e.message:'Could not load persisted traces');}
+   return true;
+  }catch(e){setError(e instanceof Error?e.message:'Could not load persisted traces');return null;}
   finally{setLoadingHistory(false);}
  }
- useEffect(()=>{void loadPersisted().finally(()=>setAuthChecking(false));},[]);
+ useEffect(()=>{void loadPersisted().then(authenticated=>{if(authenticated!==false)setAuthChecking(false);});},[]);
  useEffect(()=>{if(!connected||!trace){setLineageTraces([]);return;}let active=true;fetch('/api/dashboard/trace-lineage?traceId='+encodeURIComponent(trace.id),{cache:'no-store'}).then(async r=>{const d=await r.json();if(active&&r.ok)setLineageTraces(Array.isArray(d.traces)?d.traces:[]);}).catch(()=>{if(active)setLineageTraces([]);});return()=>{active=false;};},[connected,trace?.id]);
 
  const [historyModeFilter,setHistoryModeFilter]=useState('all');
