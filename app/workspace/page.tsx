@@ -45,6 +45,7 @@ export default function Home(){
  const [compareIds,setCompareIds]=useState<string[]>([]);
  const [loadingHistory,setLoadingHistory]=useState(true);
  const [connected,setConnected]=useState(false);
+ const [authChecking,setAuthChecking]=useState(true);
  const [dashboardKey,setDashboardKey]=useState('');
  const [authMode,setAuthMode]=useState<'key'|'sign-in'|'sign-up'>('key');
  const [accountEmail,setAccountEmail]=useState('');
@@ -77,7 +78,7 @@ export default function Home(){
   }catch(e){setError(e instanceof Error?e.message:'Could not load persisted traces');}
   finally{setLoadingHistory(false);}
  }
- useEffect(()=>{loadPersisted();},[]);
+ useEffect(()=>{void loadPersisted().finally(()=>setAuthChecking(false));},[]);
  useEffect(()=>{if(!connected||!trace){setLineageTraces([]);return;}let active=true;fetch('/api/dashboard/trace-lineage?traceId='+encodeURIComponent(trace.id),{cache:'no-store'}).then(async r=>{const d=await r.json();if(active&&r.ok)setLineageTraces(Array.isArray(d.traces)?d.traces:[]);}).catch(()=>{if(active)setLineageTraces([]);});return()=>{active=false;};},[connected,trace?.id]);
 
  const [historyModeFilter,setHistoryModeFilter]=useState('all');
@@ -199,6 +200,7 @@ export default function Home(){
    </div>
   </aside>
   <section className="content">
+   {authChecking?<div className="empty compact" role="status"><h3>Checking workspace session…</h3><p>Loading your team workspace.</p></div>:<>
    <header className="topbar"><div><div className="eyebrow">AI OBSERVABILITY WORKSPACE</div><h2>{view==='workspace'?'Trace explorer':view==='history'?'Trace history':view==='analysis'?'Run comparison':view==='evaluations'?'Evaluations':'Configuration'}</h2></div><div className="top-actions">{connected&&<button className="ghost" onClick={()=>void signOut()}>Sign out</button>}<span className="connection"><i/> Local-first</span>{trace&&<button className="ghost" onClick={exportTrace}>Export JSON</button>}</div></header>
 
    {!connected&&<section className="connect-card"><div><div className="eyebrow">PERSISTED TRACE STORE</div><h3>Connect to ReasonLens</h3><p>Sign in to a team workspace, create a workspace, or connect with an existing workspace API key.</p></div><div className="connect-row"><button className={authMode==='sign-in'?'primary':'ghost'} onClick={()=>{setAuthMode('sign-in');setError('');setConnectNotice('');}}>Team sign in</button><button className={authMode==='sign-up'?'primary':'ghost'} onClick={()=>{setAuthMode('sign-up');setError('');setConnectNotice('');}}>Create account</button><button className={authMode==='key'?'primary':'ghost'} onClick={()=>{setAuthMode('key');setError('');setConnectNotice('');}}>API key</button></div>{authMode==='key'?<div className="connect-row"><input type="password" value={dashboardKey} onChange={e=>setDashboardKey(e.target.value)} onKeyDown={e=>e.key==='Enter'&&connect()} placeholder="ReasonLens workspace API key"/><button className="primary" onClick={connect} disabled={!dashboardKey}>Connect</button></div>:<div className="connect-row">{authMode==='sign-up'&&<input type="text" value={workspaceName} onChange={e=>setWorkspaceName(e.target.value)} placeholder="Workspace name (optional)" maxLength={80}/>}<input type="email" autoComplete="email" value={accountEmail} onChange={e=>setAccountEmail(e.target.value)} placeholder="Email address" maxLength={320}/><input type="password" autoComplete={authMode==='sign-up'?'new-password':'current-password'} value={accountPassword} onChange={e=>setAccountPassword(e.target.value)} onKeyDown={e=>e.key==='Enter'&&(authMode==='sign-up'?createAccount():connectWithAccount())} placeholder="Password (at least 8 characters)" maxLength={128}/><button className="primary" onClick={authMode==='sign-up'?createAccount:connectWithAccount} disabled={!accountEmail.trim()||accountPassword.length<8}>{authMode==='sign-up'?'Create workspace':'Sign in'}</button></div>}{connectNotice&&<div className="connect-notice" role="status">{connectNotice}</div>}{error&&<div className="error">{error}</div>}</section>}
@@ -249,6 +251,7 @@ export default function Home(){
    {view==='evaluations'&&<EvaluationPage runs={evaluationRuns} dataset={evaluationCases} loading={evaluationLoading} busy={evaluationBusy} selection={evaluationSelection} onRun={runEvaluation} onToggle={toggleEvaluation} onImport={importEvaluationDataset}/>}
 
    {view==='settings'&&<section className="settings-page"><div className="settings-card"><div><h3>Provider</h3><p>ReasonLens uses Groq for real AI execution. The demo engine is available for local UI testing.</p></div><select value={provider} onChange={e=>setProvider(e.target.value)}><option value="mock">Demo engine</option><option value="groq">Groq API</option></select></div><div className="settings-card"><div><h3>Trace persistence</h3><p>Traces are stored in Supabase and loaded into the dashboard through an authenticated server session.</p></div><span className="badge">SUPABASE</span></div><div className="settings-card"><div><h3>Cost model</h3><p>Groq pricing is calculated from the model's reported input and output token usage.</p></div><span className="badge">LIVE</span></div><div className="settings-card"><div><h3>Model output policy</h3><p>ReasonLens visualizes structured, externally explainable artifacts. It does not request or expose private chain-of-thought.</p></div><span className="badge">SAFE</span></div></section>}
+   </>}
   </section>
  </main>
 }
