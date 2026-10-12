@@ -169,7 +169,17 @@ export default function Home(){
  }
  function load(t:Trace){setTrace(t);setTraceTab('overview');setPrompt(t.prompt);setMode(t.mode);setView('workspace')}
  function startVariant(t:Trace){setTrace(t);setTraceTab('overview');setPrompt(t.prompt);setMode(t.mode);setProvider(t.provider==='groq'?'groq':'mock');setPendingParentTraceId(t.id);setView('workspace');setError('')}
- function addTraceToEvaluation(t:Trace){setEvaluationCases(cases=>cases.some(item=>item.traceId===t.id)?cases:[...cases,{id:'trace-'+t.id,name:'Trace '+t.id.slice(0,8),prompt:t.prompt,traceId:t.id,description:'Pinned trace from lineage'}]);setView('evaluations');}
+ async function addTraceToEvaluation(t:Trace){
+  const testCase:EvaluationCase={id:'trace-'+t.id,name:'Trace '+t.id.slice(0,8),prompt:t.prompt,traceId:t.id,description:'Evaluation for selected saved trace'};
+  setEvaluationCases(cases=>cases.some(item=>item.traceId===t.id)?cases:[...cases,testCase]);
+  setEvaluationBusy(true);setError('');
+  try{
+   const r=await fetch('/api/evaluations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:'Trace evaluation · '+t.id.slice(0,8),cases:[testCase]})});
+   const d=await r.json();if(!r.ok)throw new Error(d.error||'Could not evaluate selected trace');
+   setEvaluationRuns(rs=>[d.run,...rs.filter(x=>x.id!==d.run.id)]);setEvaluationSelection([]);setView('evaluations');
+  }catch(e){setError(e instanceof Error?e.message:'Could not evaluate selected trace');setView('evaluations');}
+  finally{setEvaluationBusy(false);}
+ }
  function exportTrace(){if(!trace)return;const blob=new Blob([JSON.stringify(trace,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`reasonlens-${trace.id}.json`;a.click();URL.revokeObjectURL(a.href)}
  function importTrace(e:React.ChangeEvent<HTMLInputElement>){const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const t=JSON.parse(String(reader.result)) as Trace;if(!t.id||!Array.isArray(t.nodes)||!Array.isArray(t.edges))throw new Error('Invalid trace');setTrace(t);setTraceTab('overview');setHistory(h=>[t,...h.filter(x=>x.id!==t.id)].slice(0,30));setView('workspace')}catch(err){setError(err instanceof Error?err.message:'Invalid trace file')}};reader.readAsText(file)}
  function toggleCompare(id:string){setCompareIds(ids=>ids.includes(id)?ids.filter(x=>x!==id):ids.length<2?[...ids,id]:[ids[1],id])}
