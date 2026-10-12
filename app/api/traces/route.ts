@@ -46,10 +46,25 @@ export async function POST(req:Request){
  const parsed=await readJsonBody(req,1024*1024);
  if(!parsed.ok)return NextResponse.json({error:parsed.error},{status:parsed.status});
  if(!validTrace(parsed.value))return NextResponse.json({error:'Invalid trace payload'},{status:400});
- try{
-  await saveTrace(parsed.value,workspaceId);
-  return NextResponse.json({id:parsed.value.id,status:'accepted'},{status:202});
- }catch{
-  return NextResponse.json({error:'Trace store unavailable'},{status:503});
- }
+ 
+  try {
+    await saveTrace(parsed.value, workspaceId);
+    return NextResponse.json(
+      { id: parsed.value.id, status: 'accepted' },
+      { status: 202 }
+    );
+  } catch (error) {
+    console.error(
+      '[traces] saveTrace failed:',
+      error instanceof Error
+        ? { name: error.name, message: error.message, stack: error.stack }
+        : error
+    );
+
+    return NextResponse.json(
+      { error: 'Trace store unavailable' },
+      { status: 503 }
+    );
+  }
+
 }

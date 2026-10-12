@@ -147,7 +147,7 @@ async function main(){
         id:randomUUID(),createdAt:new Date().toISOString(),provider:'security-test',model:'live-integration',
         prompt:marker+'-team-'+team.label,mode:'chat',answer:'synthetic test data for '+team.label,
         status:'completed',metrics:{latencyMs:1,inputTokens:1,outputTokens:1,estimatedCostUsd:0},
-        nodes:[],edges:[],lineage:{workflowId:marker+'-'+team.label}
+        nodes:[],edges:[],lineage: { workflowId: randomUUID() }
       };
       const write=await appRequest('/api/traces',{key:team.key,method:'POST',body:trace,expectedStatus:202});
       assert.equal(write.body.id,trace.id,'API should acknowledge the exact created trace ID');

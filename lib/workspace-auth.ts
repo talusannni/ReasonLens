@@ -2,6 +2,7 @@ import {createHash,timingSafeEqual} from 'node:crypto';
 
 export const DEFAULT_WORKSPACE_ID='00000000-0000-4000-8000-000000000001';
 
+
 function config(){
  const url=process.env.SUPABASE_URL;
  const key=process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -21,10 +22,26 @@ export async function resolveWorkspaceForCredential(credential:string|undefined)
  try{
   const {url,key}=config();
   const params=new URLSearchParams({select:'workspace_id',key_hash:'eq.'+digest(credential),revoked_at:'is.null',limit:'1'});
-  const response=await fetch(url+'/rest/v1/reasonlens_api_keys?'+params.toString(),{headers:headers(key),cache:'no-store'});
-  if(!response.ok)return null;
-  const rows=await response.json();
-  if(!rows[0]||typeof rows[0].workspace_id!=='string')return null;
+  const response = await fetch(
+    url + '/rest/v1/reasonlens_api_keys?' + params.toString(),
+    { headers: headers(key), cache: 'no-store' }
+  );
+  if (!response.ok) {
+    console.error(
+      '[workspace-auth] API-key lookup failed:',
+      response.status
+    );
+    return null;
+  }
+
+  const rows = await response.json();
+
+  if (!rows[0] || typeof rows[0].workspace_id !== 'string') {
+    console.error(
+      '[workspace-auth] No matching active API-key record'
+    );
+    return null;
+  }
   const workspaceId=rows[0].workspace_id as string;
   const workspaceParams=new URLSearchParams({select:'id,status',id:'eq.'+workspaceId,limit:'1'});
   const workspaceResponse=await fetch(url+'/rest/v1/reasonlens_workspaces?'+workspaceParams.toString(),{headers:headers(key),cache:'no-store'});
