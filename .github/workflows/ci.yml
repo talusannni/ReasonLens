@@ -34,4 +34,5 @@ jobs:
       - run: npm run test:trace-execution
       - run: npm run test:api-security
       - run: npm run test:tenant-isolation
+      - run: npm run test:security-integrity
       - run: npm run build
