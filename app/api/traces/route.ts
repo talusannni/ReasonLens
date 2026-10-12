@@ -6,7 +6,7 @@ import {enforceRateLimit,workspaceRateLimitScope} from '../../../lib/rate-limit'
 import type {Trace} from '../../../lib/types';
 
 async function authorized(req:Request):Promise<string|null>{
- const credential=req.headers.get('authorization')?.replace(/^Bearer\\s+/i,'').trim();
+ const credential=req.headers.get('authorization')?.replace(/^Bearer\s+/i,'').trim();
  return resolveWorkspaceForCredential(credential);
 }
 
