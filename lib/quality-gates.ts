@@ -82,6 +82,13 @@ export function evaluateTrace(trace:Trace,config:QualityGateConfig=DEFAULT_QUALI
  if(trace.mode==='agent'){
   const hasPath=hasAgentExecutionPath(trace);
   rules.push({id:'agent-execution-path',label:'Agent execution path',severity:'fail',status:statusForFail(!hasPath),actual:hasPath?'connected':'missing',threshold:'tool or decision connected to final answer',message:hasPath?'The final answer is connected to a recorded tool or decision.':'The final answer is not connected to a recorded tool or decision.'});
+  const failedTools=trace.nodes.filter(node=>node.kind==='tool'&&(
+   node.metadata?.success===false||
+   (typeof node.metadata?.status==='string'&&['failed','error'].includes(node.metadata.status.toLowerCase()))||
+   (typeof node.metadata?.error==='string'&&node.metadata.error.trim().length>0)||
+   (typeof node.metadata?.errorMessage==='string'&&node.metadata.errorMessage.trim().length>0)
+  ));
+  rules.push({id:'agent-tool-outcomes',label:'Recorded tool outcomes',severity:'fail',status:statusForFail(failedTools.length>0),actual:`${failedTools.length} failed tool(s)`,threshold:'0 failed tools',message:failedTools.length? `${failedTools.length} tool call(s) recorded an explicit failure.`:'No explicit tool failures were recorded.'});
  }
  if(provenanceApplicable){
   rules.push(
@@ -89,12 +96,6 @@ export function evaluateTrace(trace:Trace,config:QualityGateConfig=DEFAULT_QUALI
    {id:'answer-provenance',label:'Answer provenance path',severity:'fail',status:statusForFail(config.requireAnswerProvenance&&!p.answerHasProvenance),actual:p.answerHasProvenance?'present':'missing',threshold:config.requireAnswerProvenance?'present':'not required',message:config.requireAnswerProvenance&&!p.answerHasProvenance?'The final answer is not connected to evidence-backed claims.':'Answer provenance requirement is satisfied.'},
    {id:'unsupported-claims',label:'Unsupported claims',severity:'warn',status:statusForWarn(p.unsupportedClaims>config.maxUnsupportedClaims),actual:String(p.unsupportedClaims),threshold:`≤ ${config.maxUnsupportedClaims}`,message:p.unsupportedClaims>config.maxUnsupportedClaims?`${p.unsupportedClaims} unsupported claim(s) exceed the warning threshold.`:'Unsupported-claim threshold is satisfied.'}
   );
- }
- if(trace.mode==='chat'&&!provenanceApplicable){
-  rules.push({id:'provenance-applicability',label:'Evidence provenance',severity:'warn',status:'PASS',actual:'not applicable',threshold:'no retrieval evidence expected',message:'This trace has no explicit evidence sources. Evidence-backed provenance checks were skipped; this does not establish factual correctness.'});
- }
- if(trace.mode==='agent'&&!provenanceApplicable){
-  rules.push({id:'provenance-applicability',label:'Evidence provenance',severity:'warn',status:'PASS',actual:'not applicable',threshold:'evidence or explicit tool support',message:'No evidence-backed claim links were recorded. Agent execution is checked separately; answer factuality is not established by execution lineage alone.'});
  }
  if(config.maxLatencyMs!==undefined)rules.push({id:'latency',label:'Latency',severity:'warn',status:statusForWarn(trace.metrics.latencyMs>config.maxLatencyMs),actual:`${trace.metrics.latencyMs} ms`,threshold:`≤ ${config.maxLatencyMs} ms`,message:trace.metrics.latencyMs>config.maxLatencyMs?`Latency ${trace.metrics.latencyMs} ms exceeds the ${config.maxLatencyMs} ms warning threshold.`:'Latency is within the configured threshold.'});
  if(config.maxCostUsd!==undefined)rules.push({id:'cost',label:'Estimated cost',severity:'warn',status:statusForWarn(trace.metrics.estimatedCostUsd>config.maxCostUsd),actual:`$${trace.metrics.estimatedCostUsd.toFixed(6)}`,threshold:`≤ $${config.maxCostUsd}`,message:trace.metrics.estimatedCostUsd>config.maxCostUsd?`Estimated cost exceeds the $${config.maxCostUsd} warning threshold.`:'Estimated cost is within the configured threshold.'});
