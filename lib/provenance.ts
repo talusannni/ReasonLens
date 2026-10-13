@@ -12,10 +12,22 @@ export interface ProvenanceReport {
 }
 const nodeMap=(trace:Trace)=>new Map(trace.nodes.map(n=>[n.id,n]));
 
+/** Evidence is applicable to RAG traces, traces with explicit evidence nodes,
+ * or agent traces that explicitly link a tool result to a claim with a supports edge.
+ * A chat trace without these artifacts is not a zero-quality provenance result;
+ * provenance is simply not applicable to that trace.
+ */
+export function isProvenanceApplicable(trace:Trace):boolean {
+ if(trace.mode==='rag'||trace.nodes.some(n=>n.kind==='evidence'))return true;
+ if(trace.mode!=='agent')return false;
+ const nodes=nodeMap(trace);
+ return trace.edges.some(edge=>edge.kind==='supports'&&nodes.get(edge.source)?.kind==='tool'&&nodes.get(edge.target)?.kind==='claim');
+}
+
 /*
- * Evidence ancestry must follow explicit supports relationships.
- * Workflow edges such as depends_on, retrieves, or produces describe
- * execution structure and must never make unrelated claims inherit evidence.
+ * Evidence ancestry must follow explicit supports relationships. Agent tool output
+ * can be a supporting source only when the trace explicitly links it to a claim.
+ * Workflow edges such as depends_on, retrieves, or produces never imply support.
  */
 function upstreamEvidence(trace:Trace,claimId:string):GraphNode[]{
  const nodes=nodeMap(trace), result:GraphNode[]=[];
@@ -26,7 +38,7 @@ function upstreamEvidence(trace:Trace,claimId:string):GraphNode[]{
    if(edge.target!==current||edge.kind!=='supports'||seen.has(edge.source))continue;
    seen.add(edge.source);
    const source=nodes.get(edge.source); if(!source)continue;
-   if(source.kind==='evidence')result.push(source);
+   if(source.kind==='evidence'||(trace.mode==='agent'&&source.kind==='tool'))result.push(source);
    else if(source.kind==='claim')queue.push(source.id);
   }
  }
