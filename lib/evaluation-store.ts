@@ -10,15 +10,16 @@ function headers(key:string){return {'Content-Type':'application/json','apikey':
 function hydrateRun(row:any):EvaluationRun{
  const summary=row.summary||{};
  const results=Array.isArray(row.results)?row.results:[];
+ const notEvaluatedCases=Number.isFinite(summary.notEvaluatedCases)?summary.notEvaluatedCases:results.filter((result:any)=>result?.status==='not_evaluated').length;
  const provenanceEvaluatedCases=Number.isFinite(summary.provenanceEvaluatedCases)
   ?summary.provenanceEvaluatedCases
   :results.filter((result:any)=>result?.report?.rules?.some((rule:any)=>rule.id==='provenance-score')).length;
- return {id:row.id,name:row.name,createdAt:row.created_at,dataset:row.dataset,...summary,provenanceEvaluatedCases,results};
+ return {id:row.id,name:row.name,createdAt:row.created_at,dataset:row.dataset,...summary,notEvaluatedCases,provenanceEvaluatedCases,results};
 }
 export async function saveEvaluationRun(run:EvaluationRun,workspaceId=DEFAULT_WORKSPACE_ID):Promise<EvaluationRun>{
  const {url,key}=config();
  const row={id:run.id,workspace_id:workspaceId,created_at:run.createdAt,name:run.name,dataset:run.dataset,results:run.results,summary:{
-  totalCases:run.totalCases,evaluatedCases:run.evaluatedCases,missingCases:run.missingCases,passedCases:run.passedCases,
+  totalCases:run.totalCases,evaluatedCases:run.evaluatedCases,missingCases:run.missingCases,notEvaluatedCases:run.notEvaluatedCases,passedCases:run.passedCases,
   warnedCases:run.warnedCases,failedCases:run.failedCases,passRate:run.passRate,averageProvenanceScore:run.averageProvenanceScore,
   provenanceEvaluatedCases:run.provenanceEvaluatedCases,
   totalLatencyMs:run.totalLatencyMs,averageLatencyMs:run.averageLatencyMs,totalCostUsd:run.totalCostUsd
