@@ -1,5 +1,6 @@
 import type {Trace} from './types';
 import {evaluateTrace,type QualityGateConfig,type QualityGateReport} from './quality-gates';
+import {isProvenanceApplicable} from './provenance';
 
 export interface EvaluationCase {
  id:string;
@@ -19,7 +20,8 @@ export interface EvaluationCaseResult {
 export interface EvaluationRun {
  id:string; name:string; createdAt:string; dataset:EvaluationCase[]; totalCases:number; evaluatedCases:number; missingCases:number;
  passedCases:number; warnedCases:number; failedCases:number; passRate:number;
- averageProvenanceScore:number; totalLatencyMs:number; averageLatencyMs:number; totalCostUsd:number;
+ averageProvenanceScore:number; provenanceEvaluatedCases:number;
+ totalLatencyMs:number; averageLatencyMs:number; totalCostUsd:number;
  results:EvaluationCaseResult[];
 }
 export interface EvaluationComparison {
@@ -43,8 +45,10 @@ export function evaluateDataset(name:string,cases:EvaluationCase[],traces:Trace[
  const passedCases=results.filter(r=>r.status==='passed').length;
  const warnedCases=results.filter(r=>r.status==='warned').length;
  const failedCases=results.filter(r=>r.status==='failed').length;
- const scores=evaluated.map(r=>Number.parseInt(r.report!.rules.find(rule=>rule.id==='provenance-score')?.actual??'',10)).filter(Number.isFinite);
- const traceList=evaluated.map(r=>traces.find(t=>t.id===r.traceId)).filter(Boolean) as Trace[];
+ const traceById=new Map(traces.map(trace=>[trace.id,trace] as const));
+ const provenanceResults=evaluated.filter(result=>result.traceId&&isProvenanceApplicable(traceById.get(result.traceId)!));
+ const scores=provenanceResults.map(r=>Number.parseInt(r.report!.rules.find(rule=>rule.id==='provenance-score')?.actual??'',10)).filter(Number.isFinite);
+ const traceList=evaluated.map(r=>r.traceId?traceById.get(r.traceId):undefined).filter(Boolean) as Trace[];
  const totalLatencyMs=traceList.reduce((sum,t)=>sum+t.metrics.latencyMs,0);
  const totalCostUsd=traceList.reduce((sum,t)=>sum+t.metrics.estimatedCostUsd,0);
  return {
@@ -52,6 +56,7 @@ export function evaluateDataset(name:string,cases:EvaluationCase[],traces:Trace[
   missingCases:results.filter(r=>r.status==='missing').length,passedCases,warnedCases,failedCases,
   passRate:cases.length?Math.round(passedCases/cases.length*1000)/10:0,
   averageProvenanceScore:scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length*10)/10:0,
+  provenanceEvaluatedCases:scores.length,
   totalLatencyMs,averageLatencyMs:traceList.length?Math.round(totalLatencyMs/traceList.length):0,totalCostUsd,results
  };
 }
@@ -64,8 +69,9 @@ export function compareEvaluationRuns(baseline:EvaluationRun,current:EvaluationR
   if(rank(now.status)<rank(before.status))regressions.push(now);
   if(rank(now.status)>rank(before.status))improvements.push(now);
  }
+ const provenanceComparable=baseline.provenanceEvaluatedCases>0&&current.provenanceEvaluatedCases>0;
  return {baseline,current,passRateDelta:Math.round((current.passRate-baseline.passRate)*10)/10,
-  provenanceDelta:Math.round((current.averageProvenanceScore-baseline.averageProvenanceScore)*10)/10,
+  provenanceDelta:provenanceComparable?Math.round((current.averageProvenanceScore-baseline.averageProvenanceScore)*10)/10:0,
   latencyDeltaMs:current.averageLatencyMs-baseline.averageLatencyMs,costDeltaUsd:current.totalCostUsd-baseline.totalCostUsd,
   regressions,improvements};
 }
