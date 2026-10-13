@@ -1,13 +1,14 @@
 'use client';
 import type {Trace} from '../lib/types';
 import {analyzeProvenance,isProvenanceApplicable} from '../lib/provenance';
+import {isRetrievalOnlyTrace} from '../lib/evidence-diff';
 
 export default function Provenance({trace}:{trace:Trace}){
- if(!isProvenanceApplicable(trace)){
+ if(isRetrievalOnlyTrace(trace)||!isProvenanceApplicable(trace)){
   const agent=trace.mode==='agent';
   return <section className="provenance-card">
    <div className="provenance-head"><div><div className="eyebrow">ANSWER PROVENANCE</div><h3>{agent?'Evidence support audit':'Evidence provenance'}</h3>
-    <p>{agent?'This agent trace has no explicit evidence-to-claim support links. Execution lineage is evaluated separately.':'This chat trace has no explicit retrieval evidence. Evidence provenance is not applicable to a standalone LLM response.'}</p></div>
+    <p>{isRetrievalOnlyTrace(trace)?'This trace stopped after retrieval and context assembly, before an answer was generated. Answer provenance cannot be scored yet.':agent?'This agent trace has no explicit evidence-to-claim support links. Execution lineage is evaluated separately.':'This chat trace has no explicit retrieval evidence. Evidence provenance is not applicable to a standalone LLM response.'}</p></div>
     <div className="provenance-score"><strong>N/A</strong><span>Not applicable</span></div>
    </div>
    <div className="provenance-empty">No evidence provenance score is assigned. This does not establish whether the answer is factually correct.</div>
