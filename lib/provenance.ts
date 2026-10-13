@@ -18,7 +18,10 @@ const nodeMap=(trace:Trace)=>new Map(trace.nodes.map(n=>[n.id,n]));
  * provenance is simply not applicable to that trace.
  */
 export function isProvenanceApplicable(trace:Trace):boolean {
- if(trace.mode==='rag'||trace.nodes.some(n=>n.kind==='evidence'))return true;
+ // The declared trace mode is authoritative. Chat traces can contain generic
+ // evidence-shaped nodes without having a retrieval/evidence contract.
+ if(trace.mode==='chat')return false;
+ if(trace.mode==='rag')return true;
  if(trace.mode!=='agent')return false;
  const nodes=nodeMap(trace);
  return trace.edges.some(edge=>edge.kind==='supports'&&nodes.get(edge.source)?.kind==='tool'&&nodes.get(edge.target)?.kind==='claim');
