@@ -1,6 +1,7 @@
 import type {Trace} from './types';
 import {evaluateTrace,type QualityGateConfig,type QualityGateReport} from './quality-gates';
 import {isProvenanceApplicable} from './provenance';
+import {isRetrievalOnlyTrace} from './evidence-diff';
 import type {TraceMode} from './types';
 
 export interface EvaluationCase {
@@ -16,12 +17,12 @@ export interface EvaluationCaseResult {
  caseId:string;
  caseName:string;
  traceId:string|null;
- status:'passed'|'warned'|'failed'|'missing';
+ status:'passed'|'warned'|'failed'|'missing'|'not_evaluated';
  report:QualityGateReport|null;
 }
 export interface EvaluationRun {
  id:string; name:string; createdAt:string; dataset:EvaluationCase[]; totalCases:number; evaluatedCases:number; missingCases:number;
- passedCases:number; warnedCases:number; failedCases:number; passRate:number;
+ passedCases:number; warnedCases:number; failedCases:number; notEvaluatedCases:number; passRate:number;
  averageProvenanceScore:number; provenanceEvaluatedCases:number;
  totalLatencyMs:number; averageLatencyMs:number; totalCostUsd:number;
  results:EvaluationCaseResult[];
@@ -44,6 +45,7 @@ export function evaluateDataset(name:string,cases:EvaluationCase[],traces:Trace[
  const results:EvaluationCaseResult[]=cases.map(testCase=>{
   const trace=matchTrace(testCase,traces);
   if(!trace)return {caseId:testCase.id,caseName:testCase.name,traceId:null,status:'missing',report:null};
+  if(isRetrievalOnlyTrace(trace))return {caseId:testCase.id,caseName:testCase.name,traceId:trace.id,status:'not_evaluated',report:null};
   const report=evaluateTrace(trace,config);
   return {caseId:testCase.id,caseName:testCase.name,traceId:trace.id,status:report.status==='FAIL'?'failed':report.status==='WARN'?'warned':'passed',report};
  });
@@ -59,7 +61,7 @@ export function evaluateDataset(name:string,cases:EvaluationCase[],traces:Trace[
  const totalCostUsd=traceList.reduce((sum,t)=>sum+t.metrics.estimatedCostUsd,0);
  return {
   id,name,createdAt:new Date().toISOString(),dataset:cases,totalCases:cases.length,evaluatedCases:evaluated.length,
-  missingCases:results.filter(r=>r.status==='missing').length,passedCases,warnedCases,failedCases,
+  missingCases:results.filter(r=>r.status==='missing').length,passedCases,warnedCases,failedCases,notEvaluatedCases:results.filter(r=>r.status==='not_evaluated').length,
   passRate:cases.length?Math.round(passedCases/cases.length*1000)/10:0,
   averageProvenanceScore:scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length*10)/10:0,
   provenanceEvaluatedCases:scores.length,
