@@ -2,12 +2,16 @@ import assert from 'node:assert/strict';
 import {compareEvaluationRuns,evaluateDataset,matchTrace,type EvaluationCase} from '../lib/evaluation';
 import type {GraphEdge,Trace,TraceMode} from '../lib/types';
 
-const trace=(id:string,prompt:string,contradicted=false,mode:TraceMode='rag'):Trace=>({
- id,createdAt:new Date().toISOString(),provider:'mock',model:'test',prompt,mode,answer:'Evidence-backed answer.',status:'completed',
- metrics:{latencyMs:100,inputTokens:10,outputTokens:20,estimatedCostUsd:0.001},
- nodes:[{id:'e',kind:'evidence',label:'Policy',detail:'Relevant policy evidence.'},{id:'c',kind:'claim',label:'Claim',detail:'Evidence-backed claim.'},{id:'a',kind:'answer',label:'Answer',detail:'Evidence-backed answer.'}],
- edges:([{id:'s',source:'e',target:'c',kind:'supports'},{id:'ca',source:'c',target:'a',kind:'answers'}] as GraphEdge[]).concat(contradicted?[{id:'x',source:'e',target:'c',kind:'contradicts'}]:[])
-});
+const trace=(id:string,prompt:string,contradicted=false,mode:TraceMode='rag'):Trace=>{
+ const nodes:Trace['nodes']=mode==='chat'
+  ?[{id:'m',kind:'model',label:'LLM response'},{id:'c',kind:'claim',label:'Claim',detail:'Answer claim.'},{id:'a',kind:'answer',label:'Answer',detail:'Answer.'}]
+  :[{id:'e',kind:'evidence',label:'Policy',detail:'Relevant policy evidence.'},{id:'c',kind:'claim',label:'Claim',detail:'Evidence-backed claim.'},{id:'a',kind:'answer',label:'Answer',detail:'Evidence-backed answer.'}];
+ const edges:GraphEdge[]=mode==='chat'
+  ?[{id:'mc',source:'m',target:'c',kind:'produces'},{id:'ca',source:'c',target:'a',kind:'answers'}]
+  :[{id:'s',source:'e',target:'c',kind:'supports'},{id:'ca',source:'c',target:'a',kind:'answers'}];
+ if(contradicted&&mode!=='chat')edges.push({id:'x',source:'e',target:'c',kind:'contradicts'});
+ return {id,createdAt:new Date().toISOString(),provider:'mock',model:'test',prompt,mode,answer:'Evidence-backed answer.',status:'completed',metrics:{latencyMs:100,inputTokens:10,outputTokens:20,estimatedCostUsd:0.001},nodes,edges};
+};
 const cases:EvaluationCase[]=[{id:'one',name:'One',prompt:'Question one'},{id:'two',name:'Two',prompt:'Question two'},{id:'three',name:'Three',prompt:'Question three'}];
 const duplicateA=trace('baseline-id','Question one');
 const duplicateB=trace('degraded-id','Question one',true);
