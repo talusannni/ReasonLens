@@ -40,7 +40,7 @@ const chat=makeTrace('chat','chat',[
 const chatReport=evaluateTrace(chat);
 assert.equal(chatReport.status,'PASS','a chat trace without retrieval evidence must not fail provenance gates');
 assert.ok(!chatReport.rules.some(r=>['provenance-score','answer-provenance','unsupported-claims'].includes(r.id)));
-assert.ok(chatReport.rules.some(r=>r.id==='provenance-applicability'&&r.actual==='not applicable'));
+assert.ok(!chatReport.rules.some(r=>['provenance-score','answer-provenance','unsupported-claims','provenance-applicability'].includes(r.id)));
 
 const chatContradicted=makeTrace('chat-contradicted','chat',[
  {id:'c',kind:'claim',label:'Claim',detail:'The claim'},
@@ -78,4 +78,12 @@ const failedChat=makeTrace('failed-chat','chat',[
  {id:'a',kind:'answer',label:'Answer',detail:'partial'}
 ],[],{status:'failed'});
 assert.equal(evaluateTrace(failedChat).status,'FAIL','failed executions must fail in every mode');
+const failedToolAgent=makeTrace('failed-tool-agent','agent',[
+ {id:'tool',kind:'tool',label:'Search',metadata:{status:'error',error:'provider timeout'}},
+ {id:'decision',kind:'decision',label:'Fallback decision'},
+ {id:'a',kind:'answer',label:'Answer',detail:'Fallback answer.'}
+],[{id:'t-d',source:'tool',target:'decision',kind:'produces'},{id:'d-a',source:'decision',target:'a',kind:'answers'}]);
+const failedToolReport=evaluateTrace(failedToolAgent);
+assert.equal(failedToolReport.status,'FAIL','explicitly failed agent tool calls must fail the trace evaluation');
+assert.ok(failedToolReport.rules.some(r=>r.id==='agent-tool-outcomes'&&r.status==='FAIL'));
 console.log('mode-aware quality gate tests passed');
