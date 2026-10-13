@@ -28,9 +28,12 @@ export default function EvidenceComparison({a,b}:{a:Trace;b:Trace}){
   return 'available';
  };
  const visible=report.items.filter(item=>showUnchanged||item.kind!=='unchanged');
+ const ragComparison=a.mode==='rag'&&b.mode==='rag';
+ const retrievalLabel=(trace:Trace,which:'baseline'|'current')=>trace.mode==='rag'?(which==='baseline'?'BASELINE RETRIEVAL':'CURRENT RETRIEVAL'):(which==='baseline'?'BASELINE CAPTURED EVIDENCE':'CURRENT CAPTURED EVIDENCE');
+ const retrieverLabel=(trace:Trace,which:'baseline'|'current')=>trace.mode==='rag'?(which==='baseline'?report.retrieverA:report.retrieverB)+' · top-k '+(which==='baseline'?(report.topKA??'n/a'):(report.topKB??'n/a')):'Not applicable · '+trace.mode.toUpperCase();
  return <section className="evidence-comparison">
   <div className="evidence-comparison-head">
-   <div><div className="eyebrow">RETRIEVAL DEBUG · NO NEW LLM CALL</div><h3>Evidence diff</h3><p>Compares evidence already captured in these traces. This view does not rerun either retriever.</p></div>
+   <div><div className="eyebrow">{ragComparison?'RETRIEVAL DEBUG · NO NEW LLM CALL':'TRACE INSPECTION · NO NEW LLM CALL'}</div><h3>{ragComparison?'Evidence diff':'Captured evidence diff'}</h3><p>{ragComparison?'Compares retrieval evidence already captured in these RAG traces. This view does not rerun either retriever.':'Shows evidence-shaped nodes recorded in each trace. Differences are structural only and do not imply a retrieval-quality regression unless both runs are RAG traces.'}</p></div>
    <label className="evidence-show-unchanged"><input type="checkbox" checked={showUnchanged} onChange={e=>setShowUnchanged(e.target.checked)}/> Show unchanged</label>
   </div>
   <div className="evidence-diff-stats">
@@ -41,8 +44,8 @@ export default function EvidenceComparison({a,b}:{a:Trace;b:Trace}){
    <div><span>CHANGED</span><strong className="changed-text">{report.changed}</strong></div>
   </div>
   <div className="evidence-run-pair">
-   <article><span>BASELINE RETRIEVAL</span><strong>{report.retrieverA} · top-k {report.topKA??'n/a'}</strong><p>{report.queryA}</p></article>
-   <article><span>CURRENT RETRIEVAL</span><strong>{report.retrieverB} · top-k {report.topKB??'n/a'}</strong><p>{report.queryB}</p></article>
+   <article><span>{retrievalLabel(a,'baseline')}</span><strong>{retrieverLabel(a,'baseline')}</strong><p>{report.queryA}</p></article>
+   <article><span>{retrievalLabel(b,'current')}</span><strong>{retrieverLabel(b,'current')}</strong><p>{report.queryB}</p></article>
   </div>
   <div className="evidence-diff-list">
    {visible.map((item,index)=><article key={item.key} className={'evidence-diff-item '+item.kind}>
