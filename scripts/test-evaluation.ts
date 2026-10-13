@@ -16,6 +16,9 @@ const cases:EvaluationCase[]=[{id:'one',name:'One',prompt:'Question one'},{id:'t
 const duplicateA=trace('baseline-id','Question one');
 const duplicateB=trace('degraded-id','Question one',true);
 assert.equal(matchTrace({id:'pinned',name:'Pinned',prompt:'Question one',traceId:'baseline-id'},[duplicateB,duplicateA])?.id,'baseline-id');
+const samePromptChat=trace('chat-prompt','Question same',false,'chat');
+const samePromptRag=trace('rag-prompt','Question same',false,'rag');
+assert.equal(matchTrace({id:'mode-filter',name:'Mode filter',prompt:'Question same',mode:'rag'},[samePromptChat,samePromptRag])?.id,'rag-prompt','evaluation cases must match the requested trace mode');
 const baseline=evaluateDataset('Baseline',cases,[trace('1','Question one'),trace('2','Question two')]);
 assert.equal(baseline.evaluatedCases,2); assert.equal(baseline.missingCases,1); assert.equal(baseline.passedCases,2); assert.equal(baseline.passRate,66.7);
 assert.equal(baseline.provenanceEvaluatedCases,2);
