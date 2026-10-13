@@ -1,6 +1,7 @@
 import type {Trace} from './types';
 import {evaluateTrace,type QualityGateConfig,type QualityGateReport} from './quality-gates';
 import {isProvenanceApplicable} from './provenance';
+import type {TraceMode} from './types';
 
 export interface EvaluationCase {
  id:string;
@@ -9,6 +10,7 @@ export interface EvaluationCase {
  traceId?:string;
  description?:string;
  tags?:string[];
+ mode?:TraceMode;
 }
 export interface EvaluationCaseResult {
  caseId:string;
@@ -30,9 +32,13 @@ export interface EvaluationComparison {
 }
 const normalize=(value:string)=>value.toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ');
 export function matchTrace(testCase:EvaluationCase,traces:Trace[]):Trace|null {
- if(testCase.traceId){return traces.find(t=>t.id===testCase.traceId) ?? null;}
+ const expectedMode=testCase.mode??(testCase.tags?.includes('rag')?'rag':testCase.tags?.includes('agent')?'agent':testCase.tags?.includes('chat')?'chat':undefined);
+ if(testCase.traceId){
+  const pinned=traces.find(t=>t.id===testCase.traceId)??null;
+  return pinned&&(!expectedMode||pinned.mode===expectedMode)?pinned:null;
+ }
  const wanted=normalize(testCase.prompt);
- return traces.find(t=>normalize(t.prompt)===wanted) ?? null;
+ return traces.find(t=>(!expectedMode||t.mode===expectedMode)&&normalize(t.prompt)===wanted) ?? null;
 }
 export function evaluateDataset(name:string,cases:EvaluationCase[],traces:Trace[],config?:QualityGateConfig,id='eval_'+Date.now()):EvaluationRun {
  const results:EvaluationCaseResult[]=cases.map(testCase=>{
@@ -76,7 +82,7 @@ export function compareEvaluationRuns(baseline:EvaluationRun,current:EvaluationR
   regressions,improvements};
 }
 export const CORE_RAG_DATASET:EvaluationCase[]=[
- {id:'rag-sla',name:'SLA support claim',prompt:'Is premium support availability 99.9% monthly?',description:'Checks that the SLA claim is evidence-backed and contradiction-free.',tags:['rag','provenance']},
- {id:'rag-refund',name:'Refund policy',prompt:'Can the customer receive a refund under the policy?',description:'Checks answer provenance for a policy decision.',tags:['rag','policy']},
- {id:'rag-contract',name:'Contract conflict',prompt:'Does the customer contract guarantee the stated SLA?',description:'Checks detection of contradictory contractual evidence.',tags:['rag','contradiction']}
+ {id:'rag-sla',name:'SLA support claim',prompt:'Is premium support availability 99.9% monthly?',mode:'rag',description:'Checks that the SLA claim is evidence-backed and contradiction-free.',tags:['rag','provenance']},
+ {id:'rag-refund',name:'Refund policy',prompt:'Can the customer receive a refund under the policy?',mode:'rag',description:'Checks answer provenance for a policy decision.',tags:['rag','policy']},
+ {id:'rag-contract',name:'Contract conflict',prompt:'Does the customer contract guarantee the stated SLA?',mode:'rag',description:'Checks detection of contradictory contractual evidence.',tags:['rag','contradiction']}
 ];
