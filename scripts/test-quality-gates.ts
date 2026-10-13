@@ -41,6 +41,15 @@ const chatReport=evaluateTrace(chat);
 assert.equal(chatReport.status,'PASS','a chat trace without retrieval evidence must not fail provenance gates');
 assert.ok(!chatReport.rules.some(r=>['provenance-score','answer-provenance','unsupported-claims'].includes(r.id)));
 assert.ok(!chatReport.rules.some(r=>['provenance-score','answer-provenance','unsupported-claims','provenance-applicability'].includes(r.id)));
+const chatWithEvidenceNode=makeTrace('chat-evidence-shaped','chat',[
+ {id:'e',kind:'evidence',label:'Context-like node'},
+ {id:'m',kind:'model',label:'LLM response'},
+ {id:'c',kind:'claim',label:'Claim',detail:'Chat claim'},
+ {id:'a',kind:'answer',label:'Answer',detail:'Chat answer'}
+],[{id:'mc',source:'m',target:'c',kind:'produces'},{id:'ca',source:'c',target:'a',kind:'answers'}]);
+const chatWithEvidenceReport=evaluateTrace(chatWithEvidenceNode);
+assert.equal(chatWithEvidenceReport.status,'PASS','declared chat mode must remain non-provenance-evaluable even if an evidence-shaped node exists');
+assert.ok(!chatWithEvidenceReport.rules.some(r=>r.id==='provenance-score'||r.id==='answer-provenance'));
 
 const chatContradicted=makeTrace('chat-contradicted','chat',[
  {id:'c',kind:'claim',label:'Claim',detail:'The claim'},
