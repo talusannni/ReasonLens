@@ -1,32 +1,29 @@
 import assert from 'node:assert/strict';
 import {evaluateComparison,evaluateTrace} from '../lib/quality-gates';
-import type {GraphEdge,GraphNode,Trace} from '../lib/types';
+import type {GraphEdge,GraphNode,Trace,TraceMode} from '../lib/types';
 
-const base=(id:string,scoreClaim:string,status:'supported'|'contradicted'):Trace=>{
- const nodes:GraphNode[]=[
-  {id:'e',kind:'evidence',label:'SLA policy',detail:scoreClaim},
-  {id:'c',kind:'claim',label:'Availability claim',detail:'Premium support targets 99.9% monthly availability.'},
-  {id:'a',kind:'answer',label:'Answer',detail:'Premium support availability is 99.9%.'}
- ];
- const edges:GraphEdge[]=[
-  {id:'s',source:'e',target:'c',kind:'supports'},
-  {id:'ca',source:'c',target:'a',kind:'answers'}
- ];
- if(status==='contradicted'){
-  nodes.push({id:'e2',kind:'evidence',label:'Contract',detail:'Contract availability is 99.5%.'});
-  edges.push({id:'x',source:'e2',target:'c',kind:'contradicts'},{id:'e2s',source:'e2',target:'c',kind:'supports'});
- }
+function makeTrace(id:string,mode:TraceMode,nodes:GraphNode[],edges:GraphEdge[],overrides:Partial<Trace>={}):Trace{
  return {
-  id,createdAt:new Date().toISOString(),provider:'mock',model:'test',prompt:'Is premium support 99.9%?',mode:'rag',
-  answer:'Premium support availability is 99.9%.',status:'completed',
+  id,createdAt:new Date().toISOString(),provider:'mock',model:'test',prompt:'What is AI?',
+  mode,nodes,edges,answer:'AI is a field of computer science.',status:'completed',
   metrics:{latencyMs:100,inputTokens:10,outputTokens:20,estimatedCostUsd:0.001},
-  nodes,edges
+  ...overrides
  };
-};
-
-const good=base('good','Premium support targets 99.9%.','supported');
-const bad=base('bad','Contract states 99.5%.','contradicted');
-
+}
+const ragNodes:GraphNode[]=[
+ {id:'e',kind:'evidence',label:'Reference',detail:'AI is a field of computer science.'},
+ {id:'c',kind:'claim',label:'Definition',detail:'AI is a field of computer science.',metadata:{confidence:.95}},
+ {id:'a',kind:'answer',label:'Answer',detail:'AI is a field of computer science.'}
+];
+const ragEdges:GraphEdge[]=[
+ {id:'s',source:'e',target:'c',kind:'supports'},
+ {id:'ca',source:'c',target:'a',kind:'answers'}
+];
+const good=makeTrace('good','rag',ragNodes,ragEdges);
+const bad=makeTrace('bad','rag',[
+ {id:'c',kind:'claim',label:'Definition',detail:'AI is a field of computer science.'},
+ {id:'a',kind:'answer',label:'Answer',detail:'AI is a field of computer science.'}
+],[{id:'ca',source:'c',target:'a',kind:'answers'}]);
 assert.equal(evaluateTrace(good).status,'PASS');
 const badReport=evaluateTrace(bad);
 assert.equal(badReport.status,'FAIL');
@@ -34,4 +31,51 @@ assert.ok(badReport.failures>=2);
 const comparison=evaluateComparison(good,bad);
 assert.equal(comparison.status,'FAIL');
 assert.ok(comparison.rules.some(r=>r.id==='provenance-drop'&&r.status==='WARN'));
-console.log('quality gate tests passed');
+
+const chat=makeTrace('chat','chat',[
+ {id:'m',kind:'model',label:'LLM response'},
+ {id:'c',kind:'claim',label:'Definition',detail:'AI is a field of computer science.'},
+ {id:'a',kind:'answer',label:'Answer',detail:'AI is a field of computer science.'}
+],[{id:'mc',source:'m',target:'c',kind:'produces'},{id:'ca',source:'c',target:'a',kind:'answers'}]);
+const chatReport=evaluateTrace(chat);
+assert.equal(chatReport.status,'PASS','a chat trace without retrieval evidence must not fail provenance gates');
+assert.ok(!chatReport.rules.some(r=>['provenance-score','answer-provenance','unsupported-claims'].includes(r.id)));
+assert.ok(chatReport.rules.some(r=>r.id==='provenance-applicability'&&r.actual==='not applicable'));
+
+const chatContradicted=makeTrace('chat-contradicted','chat',[
+ {id:'c',kind:'claim',label:'Claim',detail:'The claim'},
+ {id:'x',kind:'claim',label:'Contradiction',detail:'Contradictory claim'},
+ {id:'a',kind:'answer',label:'Answer',detail:'The claim'}
+],[{id:'x1',source:'x',target:'c',kind:'contradicts'},{id:'ca',source:'c',target:'a',kind:'answers'}]);
+assert.equal(evaluateTrace(chatContradicted).status,'FAIL','explicit contradictions must still be checked for chat traces');
+
+const agent=makeTrace('agent','agent',[
+ {id:'plan',kind:'analysis',label:'Plan'},
+ {id:'tool',kind:'tool',label:'Search result'},
+ {id:'decision',kind:'decision',label:'Decision'},
+ {id:'a',kind:'answer',label:'Answer',detail:'AI is a field of computer science.'}
+],[{id:'p-t',source:'plan',target:'tool',kind:'calls'},{id:'t-d',source:'tool',target:'decision',kind:'produces'},{id:'d-a',source:'decision',target:'a',kind:'answers'}]);
+const agentReport=evaluateTrace(agent);
+assert.equal(agentReport.status,'PASS','a complete agent execution path without evidence links should not fail provenance');
+assert.ok(agentReport.rules.some(r=>r.id==='agent-execution-path'&&r.status==='PASS'));
+assert.ok(!agentReport.rules.some(r=>r.id==='provenance-score'));
+
+const brokenAgent=makeTrace('broken-agent','agent',[
+ {id:'tool',kind:'tool',label:'Unrelated tool'},
+ {id:'a',kind:'answer',label:'Answer',detail:'AI is a field of computer science.'}
+],[]);
+assert.equal(evaluateTrace(brokenAgent).status,'FAIL','agent answer must connect to a recorded tool or decision');
+
+const agentToolSupported=makeTrace('agent-supported','agent',[
+ {id:'tool',kind:'tool',label:'Policy lookup result'},
+ {id:'c',kind:'claim',label:'Claim',detail:'The policy says X.',metadata:{confidence:.95}},
+ {id:'d',kind:'decision',label:'Decision'},
+ {id:'a',kind:'answer',label:'Answer',detail:'The policy says X.'}
+],[{id:'ts',source:'tool',target:'c',kind:'supports'},{id:'ca',source:'c',target:'a',kind:'answers'},{id:'da',source:'d',target:'a',kind:'answers'}]);
+assert.equal(evaluateTrace(agentToolSupported).status,'PASS','explicit agent tool-to-claim support should be provenance-evaluable');
+
+const failedChat=makeTrace('failed-chat','chat',[
+ {id:'a',kind:'answer',label:'Answer',detail:'partial'}
+],[],{status:'failed'});
+assert.equal(evaluateTrace(failedChat).status,'FAIL','failed executions must fail in every mode');
+console.log('mode-aware quality gate tests passed');
