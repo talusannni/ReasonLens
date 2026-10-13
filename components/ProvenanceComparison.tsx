@@ -1,7 +1,6 @@
 'use client';
 import type {Trace} from '../lib/types';
-import {compareProvenance,type ProvenanceClaimDiff} from '../lib/provenance-regression';
-import {isProvenanceApplicable} from '../lib/provenance';
+import {compareProvenance,isProvenanceComparable,type ProvenanceClaimDiff} from '../lib/provenance-regression';
 import {isRetrievalOnlyTrace} from '../lib/evidence-diff';
 
 function Diff({item}:{item:ProvenanceClaimDiff}){
@@ -16,7 +15,7 @@ function Diff({item}:{item:ProvenanceClaimDiff}){
 export default function ProvenanceComparison({a,b}:{a:Trace;b:Trace}){
  const report=compareProvenance(a,b);
  const retrievalOnly=isRetrievalOnlyTrace(a)||isRetrievalOnlyTrace(b);
- const comparable=isProvenanceApplicable(a)&&isProvenanceApplicable(b)&&!retrievalOnly;
+ const comparable=isProvenanceComparable(a,b);
  if(!comparable){
   const chatOnly=a.mode==='chat'&&b.mode==='chat';
   const heading=retrievalOnly?'Claim provenance not evaluated':chatOnly?'Claim changes · structural comparison':'Provenance comparison not applicable';
