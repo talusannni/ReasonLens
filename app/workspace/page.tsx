@@ -7,7 +7,7 @@ import ProvenanceComparison from '../../components/ProvenanceComparison';
 import EvidenceComparison from '../../components/EvidenceComparison';
 import QualityGate from '../../components/QualityGate';
 import ExperimentAnalysis from '../../components/ExperimentAnalysis';
-import {analyzeProvenance} from '../../lib/provenance';
+import {analyzeProvenance,isProvenanceApplicable} from '../../lib/provenance';
 import {isRetrievalOnlyTrace} from '../../lib/evidence-diff';
 import {getTraceExecutionInfo} from '../../lib/trace-execution';
 import {compareEvaluationRuns,CORE_RAG_DATASET,type EvaluationCase,type EvaluationRun} from '../../lib/evaluation';
@@ -288,9 +288,11 @@ function EvaluationPage({runs,dataset,traces,loading,busy,selection,onRun,onTogg
 }
 
 function Comparison({a,b}:{a:Trace;b:Trace}){
- const answerQualityAvailable=!isRetrievalOnlyTrace(a)&&!isRetrievalOnlyTrace(b);
  const pA=analyzeProvenance(a),pB=analyzeProvenance(b);
- const qualityValue=(value:string)=>answerQualityAvailable?value:'N/A';
+ const provenanceApplicableA=isProvenanceApplicable(a)&&!isRetrievalOnlyTrace(a);
+ const provenanceApplicableB=isProvenanceApplicable(b)&&!isRetrievalOnlyTrace(b);
+ const qualityA=(value:string)=>provenanceApplicableA?value:'N/A';
+ const qualityB=(value:string)=>provenanceApplicableB?value:'N/A';
  const rows=[
   ['Prompt',a.prompt.slice(0,90),b.prompt.slice(0,90)],
   ['Provider',a.provider,b.provider],
@@ -306,10 +308,10 @@ function Comparison({a,b}:{a:Trace;b:Trace}){
   ['Estimated cost','$'+a.metrics.estimatedCostUsd.toFixed(6),'$'+b.metrics.estimatedCostUsd.toFixed(6)],
   ['Nodes',String(a.nodes.length),String(b.nodes.length)],
   ['Edges',String(a.edges.length),String(b.edges.length)],
-  ['Provenance score',qualityValue(pA.score+'/100'),qualityValue(pB.score+'/100')],
-  ['Supported claims',qualityValue(String(pA.supportedClaims)),qualityValue(String(pB.supportedClaims))],
-  ['Unsupported claims',qualityValue(String(pA.unsupportedClaims)),qualityValue(String(pB.unsupportedClaims))],
-  ['Contradicted claims',qualityValue(String(pA.contradictedClaims)),qualityValue(String(pB.contradictedClaims))]
+  ['Provenance score',qualityA(pA.score+'/100'),qualityB(pB.score+'/100')],
+  ['Supported claims',qualityA(String(pA.supportedClaims)),qualityB(String(pB.supportedClaims))],
+  ['Unsupported claims',qualityA(String(pA.unsupportedClaims)),qualityB(String(pB.unsupportedClaims))],
+  ['Contradicted claims',qualityA(String(pA.contradictedClaims)),qualityB(String(pB.contradictedClaims))]
  ];
  return <div className="comparison"><div className="comparison-head"><div><span>RUN A</span><strong>{a.prompt.slice(0,90)}</strong></div><div><span>RUN B</span><strong>{b.prompt.slice(0,90)}</strong></div></div><div className="comparison-table"><div className="comparison-row header"><b>Metric</b><b>Run A</b><b>Run B</b></div>{rows.map(r=><div className="comparison-row" key={r[0]}><span>{r[0]}</span><strong>{r[1]}</strong><strong>{r[2]}</strong></div>)}</div><ProvenanceComparison a={a} b={b}/><EvidenceComparison a={a} b={b}/><QualityGate a={a} b={b}/><div className="comparison-answers"><article><span>RUN A ANSWER</span><p>{a.answer|| (isRetrievalOnlyTrace(a)?'Not generated — retrieval-only replay.':'No answer captured.')}</p></article><article><span>RUN B ANSWER</span><p>{b.answer|| (isRetrievalOnlyTrace(b)?'Not generated — retrieval-only replay.':'No answer captured.')}</p></article></div></div>
 }
