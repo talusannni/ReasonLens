@@ -165,7 +165,7 @@ Run the deterministic quality-gate test suite:
 npm run test:quality-gates
 ```
 
-The default gate policy fails runs below **80/100 provenance**, with disallowed contradictions or a missing answer provenance path. Unsupported claims, provenance drops, latency and estimated cost can produce warnings.
+Quality gates are trace-mode aware. RAG traces are subject to the default **80/100 provenance** threshold, answer-provenance requirement and contradiction checks. Chat traces without explicit evidence skip evidence-provenance gates rather than failing for having no retrieval data. Agent traces must connect the final answer to a recorded tool or decision; provenance gates apply when explicit evidence or tool-to-claim support links are recorded. Unsupported claims, provenance drops, latency and estimated cost can produce warnings when their checks apply. A passing structural/operational report does not independently prove factual correctness.
 
 ## Evaluation benchmark
 
