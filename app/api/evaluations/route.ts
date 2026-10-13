@@ -34,6 +34,7 @@ export async function POST(req:Request){
     typeof item.name!=='string'||!item.name.trim()||item.name.length>200||
     typeof item.prompt!=='string'||!item.prompt.trim()||item.prompt.length>12000||
     (item.traceId!==undefined&&(typeof item.traceId!=='string'||item.traceId.length>100))||
+    (item.mode!==undefined&&(typeof item.mode!=='string'||!['chat','rag','agent'].includes(item.mode)))||
     (item.description!==undefined&&(typeof item.description!=='string'||item.description.length>2000))||
     (item.tags!==undefined&&(!Array.isArray(item.tags)||item.tags.length>20||item.tags.some((tag:unknown)=>typeof tag!=='string'||tag.length>100)))){
     return NextResponse.json({error:'Invalid evaluation case; check id, name, prompt, traceId, description, and tags limits'},{status:400});

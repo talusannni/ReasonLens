@@ -6,7 +6,7 @@ import {isRetrievalOnlyTrace} from '../lib/evidence-diff';
 function Gate({report}:{report:QualityGateReport}){
  return <section className={`quality-gate ${report.status.toLowerCase()}`}>
   <div className="quality-gate-head">
-   <div><div className="eyebrow">QUALITY GATE</div><h3>Observable quality checks</h3><p>Pass/fail decisions use only trace metrics, claims, evidence and explicit provenance.</p></div>
+   <div><div className="eyebrow">QUALITY GATE</div><h3>Observable quality checks</h3><p>Checks are selected for the trace mode. A PASS means the configured observable checks passed, not that factual correctness was independently proven.</p></div>
    <div className={`quality-status ${report.status.toLowerCase()}`}><strong>{report.status}</strong><span>{report.failures} failed · {report.warnings} warnings</span></div>
   </div>
   <div className="quality-rules">{report.rules.map(rule=><article className={`quality-rule ${rule.status.toLowerCase()}`} key={rule.id}>

@@ -1,5 +1,8 @@
 import type {Trace} from './types';
 import {evaluateTrace,type QualityGateConfig,type QualityGateReport} from './quality-gates';
+import {isProvenanceApplicable} from './provenance';
+import {isRetrievalOnlyTrace} from './evidence-diff';
+import type {TraceMode} from './types';
 
 export interface EvaluationCase {
  id:string;
@@ -8,18 +11,20 @@ export interface EvaluationCase {
  traceId?:string;
  description?:string;
  tags?:string[];
+ mode?:TraceMode;
 }
 export interface EvaluationCaseResult {
  caseId:string;
  caseName:string;
  traceId:string|null;
- status:'passed'|'warned'|'failed'|'missing';
+ status:'passed'|'warned'|'failed'|'missing'|'not_evaluated';
  report:QualityGateReport|null;
 }
 export interface EvaluationRun {
  id:string; name:string; createdAt:string; dataset:EvaluationCase[]; totalCases:number; evaluatedCases:number; missingCases:number;
- passedCases:number; warnedCases:number; failedCases:number; passRate:number;
- averageProvenanceScore:number; totalLatencyMs:number; averageLatencyMs:number; totalCostUsd:number;
+ passedCases:number; warnedCases:number; failedCases:number; notEvaluatedCases:number; passRate:number;
+ averageProvenanceScore:number; provenanceEvaluatedCases:number;
+ totalLatencyMs:number; averageLatencyMs:number; totalCostUsd:number;
  results:EvaluationCaseResult[];
 }
 export interface EvaluationComparison {
@@ -28,14 +33,19 @@ export interface EvaluationComparison {
 }
 const normalize=(value:string)=>value.toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ');
 export function matchTrace(testCase:EvaluationCase,traces:Trace[]):Trace|null {
- if(testCase.traceId){return traces.find(t=>t.id===testCase.traceId) ?? null;}
+ const expectedMode=testCase.mode??(testCase.tags?.includes('rag')?'rag':testCase.tags?.includes('agent')?'agent':testCase.tags?.includes('chat')?'chat':undefined);
+ if(testCase.traceId){
+  const pinned=traces.find(t=>t.id===testCase.traceId)??null;
+  return pinned&&(!expectedMode||pinned.mode===expectedMode)?pinned:null;
+ }
  const wanted=normalize(testCase.prompt);
- return traces.find(t=>normalize(t.prompt)===wanted) ?? null;
+ return traces.find(t=>(!expectedMode||t.mode===expectedMode)&&normalize(t.prompt)===wanted) ?? null;
 }
 export function evaluateDataset(name:string,cases:EvaluationCase[],traces:Trace[],config?:QualityGateConfig,id='eval_'+Date.now()):EvaluationRun {
  const results:EvaluationCaseResult[]=cases.map(testCase=>{
   const trace=matchTrace(testCase,traces);
   if(!trace)return {caseId:testCase.id,caseName:testCase.name,traceId:null,status:'missing',report:null};
+  if(isRetrievalOnlyTrace(trace))return {caseId:testCase.id,caseName:testCase.name,traceId:trace.id,status:'not_evaluated',report:null};
   const report=evaluateTrace(trace,config);
   return {caseId:testCase.id,caseName:testCase.name,traceId:trace.id,status:report.status==='FAIL'?'failed':report.status==='WARN'?'warned':'passed',report};
  });
@@ -43,15 +53,18 @@ export function evaluateDataset(name:string,cases:EvaluationCase[],traces:Trace[
  const passedCases=results.filter(r=>r.status==='passed').length;
  const warnedCases=results.filter(r=>r.status==='warned').length;
  const failedCases=results.filter(r=>r.status==='failed').length;
- const scores=evaluated.map(r=>Number.parseInt(r.report!.rules.find(rule=>rule.id==='provenance-score')?.actual??'',10)).filter(Number.isFinite);
- const traceList=evaluated.map(r=>traces.find(t=>t.id===r.traceId)).filter(Boolean) as Trace[];
+ const traceById=new Map(traces.map(trace=>[trace.id,trace] as const));
+ const provenanceResults=evaluated.filter(result=>result.traceId&&isProvenanceApplicable(traceById.get(result.traceId)!));
+ const scores=provenanceResults.map(r=>Number.parseInt(r.report!.rules.find(rule=>rule.id==='provenance-score')?.actual??'',10)).filter(Number.isFinite);
+ const traceList=evaluated.map(r=>r.traceId?traceById.get(r.traceId):undefined).filter(Boolean) as Trace[];
  const totalLatencyMs=traceList.reduce((sum,t)=>sum+t.metrics.latencyMs,0);
  const totalCostUsd=traceList.reduce((sum,t)=>sum+t.metrics.estimatedCostUsd,0);
  return {
   id,name,createdAt:new Date().toISOString(),dataset:cases,totalCases:cases.length,evaluatedCases:evaluated.length,
-  missingCases:results.filter(r=>r.status==='missing').length,passedCases,warnedCases,failedCases,
+  missingCases:results.filter(r=>r.status==='missing').length,passedCases,warnedCases,failedCases,notEvaluatedCases:results.filter(r=>r.status==='not_evaluated').length,
   passRate:cases.length?Math.round(passedCases/cases.length*1000)/10:0,
   averageProvenanceScore:scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length*10)/10:0,
+  provenanceEvaluatedCases:scores.length,
   totalLatencyMs,averageLatencyMs:traceList.length?Math.round(totalLatencyMs/traceList.length):0,totalCostUsd,results
  };
 }
@@ -64,13 +77,14 @@ export function compareEvaluationRuns(baseline:EvaluationRun,current:EvaluationR
   if(rank(now.status)<rank(before.status))regressions.push(now);
   if(rank(now.status)>rank(before.status))improvements.push(now);
  }
+ const provenanceComparable=baseline.provenanceEvaluatedCases>0&&current.provenanceEvaluatedCases>0;
  return {baseline,current,passRateDelta:Math.round((current.passRate-baseline.passRate)*10)/10,
-  provenanceDelta:Math.round((current.averageProvenanceScore-baseline.averageProvenanceScore)*10)/10,
+  provenanceDelta:provenanceComparable?Math.round((current.averageProvenanceScore-baseline.averageProvenanceScore)*10)/10:0,
   latencyDeltaMs:current.averageLatencyMs-baseline.averageLatencyMs,costDeltaUsd:current.totalCostUsd-baseline.totalCostUsd,
   regressions,improvements};
 }
 export const CORE_RAG_DATASET:EvaluationCase[]=[
- {id:'rag-sla',name:'SLA support claim',prompt:'Is premium support availability 99.9% monthly?',description:'Checks that the SLA claim is evidence-backed and contradiction-free.',tags:['rag','provenance']},
- {id:'rag-refund',name:'Refund policy',prompt:'Can the customer receive a refund under the policy?',description:'Checks answer provenance for a policy decision.',tags:['rag','policy']},
- {id:'rag-contract',name:'Contract conflict',prompt:'Does the customer contract guarantee the stated SLA?',description:'Checks detection of contradictory contractual evidence.',tags:['rag','contradiction']}
+ {id:'rag-sla',name:'SLA support claim',prompt:'Is premium support availability 99.9% monthly?',mode:'rag',description:'Checks that the SLA claim is evidence-backed and contradiction-free.',tags:['rag','provenance']},
+ {id:'rag-refund',name:'Refund policy',prompt:'Can the customer receive a refund under the policy?',mode:'rag',description:'Checks answer provenance for a policy decision.',tags:['rag','policy']},
+ {id:'rag-contract',name:'Contract conflict',prompt:'Does the customer contract guarantee the stated SLA?',mode:'rag',description:'Checks detection of contradictory contractual evidence.',tags:['rag','contradiction']}
 ];
