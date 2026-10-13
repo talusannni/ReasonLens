@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "npm run typecheck && npm run test:provenance && npm run test:quality-gates && npm run test:evaluation && npm run test:evidence-diff && npm run test:trace-execution && npm run test:evaluation-regression && npm run test:experiment-analysis && npm run test:api-security && npm run test:security-integrity && npm run test:tenant-isolation",
+    "test": "npm run typecheck && npm run test:provenance && npm run test:quality-gates && npm run test:evaluation && npm run test:evidence-diff && npm run test:trace-execution && npm run test:trace-comparison && npm run test:evaluation-regression && npm run test:experiment-analysis && npm run test:api-security && npm run test:security-integrity && npm run test:tenant-isolation",
     "test:ci": "npm test && npm run build",
     "test:provenance": "npx --yes tsx scripts/test-provenance-regression.ts",
     "test:quality-gates": "npx --yes tsx scripts/test-quality-gates.ts",
@@ -21,7 +21,8 @@
     "test:security-live": "node scripts/test-security-live.mjs",
     "smoke:production": "node scripts/smoke-production.mjs",
     "workspace:create-key": "node scripts/create-workspace-api-key.mjs",
-    "test:tenant-isolation": "npx --yes tsx scripts/test-tenant-isolation.ts"
+    "test:tenant-isolation": "npx --yes tsx scripts/test-tenant-isolation.ts",
+    "test:trace-comparison": "npx --yes tsx scripts/test-trace-comparison.ts"
   },
   "dependencies": {
     "next": "15.5.27",
