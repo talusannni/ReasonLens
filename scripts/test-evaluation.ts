@@ -28,7 +28,7 @@ const comparison=compareEvaluationRuns(baseline,current);
 assert.ok(comparison.regressions.some(r=>r.caseId==='two'));
 assert.equal(comparison.passRateDelta,-33.4);
 
-const chatTrace=trace('chat-1','What is AI?',false,'chat');
+const chatTrace:Trace={...trace('chat-1','What is AI?',false,'chat'),nodes:[...trace('chat-1','What is AI?',false,'chat').nodes,{id:'context-node',kind:'evidence',label:'Context-shaped node'}]};
 const chatRun=evaluateDataset('Chat only',[{id:'chat-case',name:'What is AI?',prompt:'What is AI?'}],[chatTrace]);
 assert.equal(chatRun.passedCases,1,'chat trace should not fail only because provenance evidence is absent');
 assert.equal(chatRun.provenanceEvaluatedCases,0,'chat-only runs should not claim to have evaluated provenance');
