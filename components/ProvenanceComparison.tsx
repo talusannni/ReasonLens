@@ -1,7 +1,9 @@
 'use client';
 import type {Trace} from '../lib/types';
 import {compareProvenance,type ProvenanceClaimDiff} from '../lib/provenance-regression';
+import {isProvenanceApplicable} from '../lib/provenance';
 import {isRetrievalOnlyTrace} from '../lib/evidence-diff';
+
 function Diff({item}:{item:ProvenanceClaimDiff}){
  const claim=item.claimB||item.claimA||item.key;
  return <article className={"provenance-diff "+item.kind}>
@@ -10,20 +12,32 @@ function Diff({item}:{item:ProvenanceClaimDiff}){
   <div className="provenance-diff-meta">{item.statusA&&<span>Run A: <b>{item.statusA}</b></span>}{item.statusB&&<span>Run B: <b>{item.statusB}</b></span>}{item.addedEvidence.length>0&&<span>+{item.addedEvidence.length} evidence</span>}{item.removedEvidence.length>0&&<span>-{item.removedEvidence.length} evidence</span>}</div>
  </article>;
 }
+
 export default function ProvenanceComparison({a,b}:{a:Trace;b:Trace}){
- if(isRetrievalOnlyTrace(a)||isRetrievalOnlyTrace(b)){
+ const report=compareProvenance(a,b);
+ const retrievalOnly=isRetrievalOnlyTrace(a)||isRetrievalOnlyTrace(b);
+ const comparable=isProvenanceApplicable(a)&&isProvenanceApplicable(b)&&!retrievalOnly;
+ if(!comparable){
+  const chatOnly=a.mode==='chat'&&b.mode==='chat';
+  const heading=retrievalOnly?'Claim provenance not evaluated':chatOnly?'Claim changes · structural comparison':'Provenance comparison not applicable';
+  const explanation=retrievalOnly
+   ?'At least one run intentionally stopped before LLM generation. With no generated claims or answer, claim-level provenance deltas would be misleading.'
+   :chatOnly
+    ?'These are chat traces without an evidence-provenance contract. Added or removed claims are structural differences between answers, not verified quality regressions or improvements.'
+    :'At least one trace has no applicable provenance contract, so provenance scores and claim-status regressions cannot be compared reliably.';
   return <section className="provenance-comparison not-evaluated">
-   <div className="provenance-comparison-head"><div><div className="eyebrow">RAG REGRESSION ANALYSIS</div><h3>Claim provenance not evaluated</h3><p>At least one run intentionally stopped before LLM generation. With no generated claims or answer, claim-level provenance deltas would be misleading.</p></div></div>
-   <div className="provenance-empty">Use the Evidence diff below to inspect added, removed, and changed retrieval results. Run two full pipeline traces to compare claim support and answer provenance.</div>
+   <div className="provenance-comparison-head"><div><div className="eyebrow">TRACE COMPARISON</div><h3>{heading}</h3><p>{explanation}</p></div><div className="regression-score unchanged"><strong>N/A</strong><span>provenance delta</span></div></div>
+   <div className="regression-stats"><span><b>{report.addedClaims}</b> claims added</span><span><b>{report.removedClaims}</b> claims removed</span><span><b>{report.evidenceAdded}</b> evidence nodes added</span><span><b>{report.evidenceRemoved}</b> evidence nodes removed</span></div>
+   <div className="provenance-empty">{chatOnly?'Use the answer panels to compare the generated responses. Use a RAG trace with captured retrieval evidence to evaluate evidence support.':'Run comparable traces with explicit evidence support to inspect provenance regressions and improvements.'}</div>
   </section>;
  }
- const report=compareProvenance(a,b),direction=report.scoreDelta>0?'improved':report.scoreDelta<0?'regressed':'unchanged';
+ const direction=report.scoreDelta>0?'improved':report.scoreDelta<0?'regressed':'unchanged';
  return <section className="provenance-comparison">
-  <div className="provenance-comparison-head"><div><div className="eyebrow">RAG REGRESSION ANALYSIS</div><h3>Provenance changes</h3><p>Compares explicit claims, evidence and contradictions between the two observable traces.</p></div><div className={"regression-score "+direction}><strong>{report.scoreDelta>0?'+':''}{report.scoreDelta}</strong><span>provenance score</span></div></div>
-  <div className="regression-stats"><span><b>{report.regressions.length}</b> regressions</span><span><b>{report.improvements.length}</b> improvements</span><span><b>{report.changes.length}</b> evidence changes</span><span><b>{report.addedClaims}</b> added claims</span><span><b>{report.removedClaims}</b> removed claims</span><span><b>{report.evidenceAdded}</b> evidence added</span><span><b>{report.evidenceRemoved}</b> evidence removed</span></div>
+  <div className="provenance-comparison-head"><div><div className="eyebrow">PROVENANCE COMPARISON</div><h3>Provenance changes</h3><p>Compares explicit claim support, evidence and contradictions. These structural signals help investigate regressions; they do not independently establish factual correctness.</p></div><div className={"regression-score "+direction}><strong>{report.scoreDelta>0?'+':''}{report.scoreDelta}</strong><span>provenance score</span></div></div>
+  <div className="regression-stats"><span><b>{report.regressions.length}</b> potential regressions</span><span><b>{report.improvements.length}</b> potential improvements</span><span><b>{report.changes.length}</b> evidence changes</span><span><b>{report.addedClaims}</b> claims added</span><span><b>{report.removedClaims}</b> claims removed</span><span><b>{report.evidenceAdded}</b> evidence added</span><span><b>{report.evidenceRemoved}</b> evidence removed</span></div>
   {report.answerPathChanged&&<div className="regression-alert">Answer provenance path changed: <b>{report.answerPathA?'present':'missing'}</b> → <b>{report.answerPathB?'present':'missing'}</b>.</div>}
-  {report.regressions.length>0&&<div className="provenance-diff-group"><h4>Regressions</h4>{report.regressions.map((x,i)=><Diff key={x.key+'r'+i} item={x}/>)}</div>}
-  {report.improvements.length>0&&<div className="provenance-diff-group"><h4>Improvements</h4>{report.improvements.map((x,i)=><Diff key={x.key+'i'+i} item={x}/>)}</div>}
+  {report.regressions.length>0&&<div className="provenance-diff-group"><h4>Potential regressions</h4>{report.regressions.map((x,i)=><Diff key={x.key+'r'+i} item={x}/>)}</div>}
+  {report.improvements.length>0&&<div className="provenance-diff-group"><h4>Potential improvements</h4>{report.improvements.map((x,i)=><Diff key={x.key+'i'+i} item={x}/>)}</div>}
   {report.changes.length>0&&<div className="provenance-diff-group"><h4>Evidence changes</h4>{report.changes.map((x,i)=><Diff key={x.key+'c'+i} item={x}/>)}</div>}
   {!report.regressions.length&&!report.improvements.length&&!report.changes.length&&<div className="provenance-empty">No claim or evidence provenance changes detected.</div>}
  </section>;
