@@ -34,4 +34,10 @@ assert.equal(chatRun.passedCases,1,'chat trace should not fail only because prov
 assert.equal(chatRun.provenanceEvaluatedCases,0,'chat-only runs should not claim to have evaluated provenance');
 assert.equal(chatRun.averageProvenanceScore,0,'non-applicable provenance is excluded from the average');
 assert.ok(!chatRun.results[0].report?.rules.some(r=>r.id==='provenance-score'));
+const retrievalOnly:Trace={...trace('retrieval-only','Question retrieval'),answer:'',nodes:[{id:'r',kind:'retrieval',label:'Retrieval',metadata:{replayMode:'retrieval-only',llmCalls:0}}],edges:[]};
+const retrievalRun=evaluateDataset('Retrieval only',[{id:'retrieval-case',name:'Retrieval only',prompt:'Question retrieval'}],[retrievalOnly]);
+assert.equal(retrievalRun.notEvaluatedCases,1,'retrieval-only traces must not be reported as answer-evaluation failures or passes');
+assert.equal(retrievalRun.failedCases,0);
+assert.equal(retrievalRun.passedCases,0);
+assert.equal(retrievalRun.results[0].status,'not_evaluated');
 console.log('evaluation tests passed');
