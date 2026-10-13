@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {compareProvenance} from '../lib/provenance-regression';
+import {compareProvenance,isProvenanceComparable} from '../lib/provenance-regression';
 import type {Trace} from '../lib/types';
 
 const base:Trace={id:'a',createdAt:'2026-01-01T00:00:00Z',provider:'test',model:'test',prompt:'q',mode:'rag',answer:'answer',status:'completed',metrics:{latencyMs:1,inputTokens:1,outputTokens:1,estimatedCostUsd:0},nodes:[
@@ -10,6 +10,12 @@ const degraded:Trace={...base,id:'b',nodes:[
  {id:'e2',kind:'evidence',label:'Contradictory policy',detail:'Policy says 99.5%'}],edges:[
  {id:'1',kind:'contradicts',source:'e2',target:'c1'},{id:'2',kind:'depends_on',source:'c1',target:'a'}]};
 const improved:Trace={...base,id:'c',nodes:[...base.nodes,{id:'e2',kind:'evidence',label:'Contract',detail:'Contract confirms 99.9%'}],edges:[...base.edges,{id:'3',kind:'supports',source:'e2',target:'c1'}]};
+const chatA:Trace={...base,id:'chat-a',mode:'chat'};
+const chatB:Trace={...degraded,id:'chat-b',mode:'chat'};
+assert.equal(isProvenanceComparable(chatA,chatB),false,'chat-to-chat comparisons must not claim provenance comparability');
+assert.equal(isProvenanceComparable(base,chatB),false,'mixed-mode comparisons must not calculate a provenance delta');
+assert.equal(isProvenanceComparable(base,improved),true,'evidence-backed RAG traces remain comparable');
+
 const r1=compareProvenance(base,degraded);
 assert.equal(r1.regressions.length,1);
 assert.equal(r1.regressions[0].statusA,'supported');
