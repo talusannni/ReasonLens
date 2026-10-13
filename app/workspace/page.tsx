@@ -107,7 +107,7 @@ export default function Home(){
   catch(e){setError(e instanceof Error?e.message:'Evaluation failed');}finally{setEvaluationBusy(false);}
  }
  function toggleEvaluation(id:string){setEvaluationSelection(ids=>ids.includes(id)?ids.filter(x=>x!==id):ids.length<2?[...ids,id]:[ids[1],id]);}
- function importEvaluationDataset(event:React.ChangeEvent<HTMLInputElement>){const file=event.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(String(reader.result));const cases=Array.isArray(parsed)?parsed:parsed.cases;if(!Array.isArray(cases)||!cases.length)throw new Error('Dataset must be a non-empty JSON array or an object with a cases array.');if(cases.some((item:any)=>typeof item?.id!=='string'||typeof item?.name!=='string'||typeof item?.prompt!=='string'||(item?.traceId!==undefined&&typeof item.traceId!=='string')))throw new Error('Every case needs id, name and prompt.');setEvaluationCases(cases);setError('');}catch(e){setError(e instanceof Error?e.message:'Invalid evaluation dataset');}};reader.readAsText(file);event.target.value='';}
+ function importEvaluationDataset(event:React.ChangeEvent<HTMLInputElement>){const file=event.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(String(reader.result));const cases=Array.isArray(parsed)?parsed:parsed.cases;if(!Array.isArray(cases)||!cases.length)throw new Error('Dataset must be a non-empty JSON array or an object with a cases array.');if(cases.some((item:any)=>typeof item?.id!=='string'||typeof item?.name!=='string'||typeof item?.prompt!=='string'||(item?.traceId!==undefined&&typeof item.traceId!=='string')||(item?.mode!==undefined&&!['chat','rag','agent'].includes(item.mode))))throw new Error('Every case needs id, name and prompt; mode, when provided, must be chat, rag or agent.');setEvaluationCases(cases);setError('');}catch(e){setError(e instanceof Error?e.message:'Invalid evaluation dataset');}};reader.readAsText(file);event.target.value='';}
  useEffect(()=>{if(connected)loadEvaluations();},[connected]);
  async function connect(){
   setError('');setConnectNotice('');
@@ -170,7 +170,7 @@ export default function Home(){
  function load(t:Trace){setTrace(t);setTraceTab('overview');setPrompt(t.prompt);setMode(t.mode);setView('workspace')}
  function startVariant(t:Trace){setTrace(t);setTraceTab('overview');setPrompt(t.prompt);setMode(t.mode);setProvider(t.provider==='groq'?'groq':'mock');setPendingParentTraceId(t.id);setView('workspace');setError('')}
  async function addTraceToEvaluation(t:Trace){
-  const testCase:EvaluationCase={id:'trace-'+t.id,name:'Trace '+t.id.slice(0,8),prompt:t.prompt,traceId:t.id,description:'Evaluation for selected saved trace'};
+  const testCase:EvaluationCase={id:'trace-'+t.id,name:'Trace '+t.id.slice(0,8),prompt:t.prompt,mode:t.mode,traceId:t.id,description:'Evaluation for selected saved trace'};
   setEvaluationCases(cases=>cases.some(item=>item.traceId===t.id)?cases:[...cases,testCase]);
   setEvaluationBusy(true);setError('');
   try{
