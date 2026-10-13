@@ -1,5 +1,6 @@
 import type {Trace} from './types';
-import {analyzeProvenance,type ClaimProvenance} from './provenance';
+import {analyzeProvenance,isProvenanceApplicable,type ClaimProvenance} from './provenance';
+import {isRetrievalOnlyTrace} from './evidence-diff';
 
 export type ProvenanceDiffKind='regression'|'improvement'|'changed'|'unchanged';
 export interface ProvenanceClaimDiff {
@@ -15,6 +16,11 @@ export interface ProvenanceRegressionReport {
   addedClaims:number; removedClaims:number; evidenceAdded:number; evidenceRemoved:number;
 }
 const statusRank:Record<ClaimProvenance['status'],number>={supported:3,weak:2,unsupported:1,contradicted:0};
+
+/** Provenance deltas are meaningful only when both traces expose an applicable evidence contract. */
+export function isProvenanceComparable(a:Trace,b:Trace):boolean {
+ return !isRetrievalOnlyTrace(a)&&!isRetrievalOnlyTrace(b)&&isProvenanceApplicable(a)&&isProvenanceApplicable(b);
+}
 function normalizeClaim(value:string):string{return value.toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ');}
 function diffClaim(a?:ClaimProvenance,b?:ClaimProvenance):ProvenanceClaimDiff{
  const key=normalizeClaim(b?.claim||a?.claim||'');
