@@ -1,13 +1,13 @@
 import type {Trace,TraceMode} from './types';
 
 export type TraceComparisonCompatibility =
- | {compatible:true; mode:TraceMode; crossMode:false}
+ | {compatible:true; mode:TraceMode; crossMode:false; reason:string}
  | {compatible:false; modes:TraceMode[]; reason:string};
 
 export function getTraceComparisonCompatibility(traces:Trace[]):TraceComparisonCompatibility{
  const modes=Array.from(new Set(traces.map(trace=>trace.mode)));
  if(modes.length<=1){
-  return {compatible:true,mode:modes[0]??'rag',crossMode:false};
+  return {compatible:true,mode:modes[0]??'rag',crossMode:false,reason:''};
  }
  return {
   compatible:false,
