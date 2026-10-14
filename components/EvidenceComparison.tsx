@@ -33,7 +33,7 @@ export default function EvidenceComparison({a,b}:{a:Trace;b:Trace}){
  const retrieverLabel=(trace:Trace,which:'baseline'|'current')=>trace.mode==='rag'?(which==='baseline'?report.retrieverA:report.retrieverB)+' · top-k '+(which==='baseline'?(report.topKA??'n/a'):(report.topKB??'n/a')):'Not applicable · '+trace.mode.toUpperCase();
  return <section className="evidence-comparison">
   <div className="evidence-comparison-head">
-   <div><div className="eyebrow">{ragComparison?'RETRIEVAL DEBUG · NO NEW LLM CALL':'TRACE INSPECTION · NO NEW LLM CALL'}</div><h3>{ragComparison?'Evidence diff':'Captured evidence diff'}</h3><p>{ragComparison?'Compares retrieval evidence already captured in these RAG traces. This view does not rerun either retriever.':'Shows evidence-shaped nodes recorded in each trace. Differences are structural only and do not imply a retrieval-quality regression unless both runs are RAG traces.'}</p></div>
+   <div><div className="eyebrow">{ragComparison?'RETRIEVAL DEBUG · NO NEW LLM CALL':'TRACE INSPECTION · NO NEW LLM CALL'}</div><h3>{ragComparison?'Evidence diff':'Captured evidence diff'}</h3><p>{ragComparison?'Compares retrieval evidence already captured in these RAG traces. Added or removed chunks are retrieval differences, not quality regressions or improvements by themselves. This view does not rerun either retriever.':'Shows evidence-shaped nodes recorded in each trace. Differences are structural only and do not imply a retrieval-quality regression unless both runs are RAG traces.'}</p></div>
    <label className="evidence-show-unchanged"><input type="checkbox" checked={showUnchanged} onChange={e=>setShowUnchanged(e.target.checked)}/> Show unchanged</label>
   </div>
   <div className="evidence-diff-stats">
