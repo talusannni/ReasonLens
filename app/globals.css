@@ -329,3 +329,15 @@ html,body{max-width:100%;overflow-x:hidden}button,input,textarea,select{max-widt
 .workspace-redesign .cross-mode-experiment-note{margin:16px 0;padding:15px 17px;border:1px solid #c7d7fe;border-left:4px solid #5276dc;border-radius:10px;background:#f5f8ff}
 .workspace-redesign .cross-mode-experiment-note strong{display:block;color:#1e3a8a;font-size:14px}
 .workspace-redesign .cross-mode-experiment-note p{margin:7px 0 0;color:#465b7a;font-size:13px;line-height:1.65}
+
+
+/* Comparison experiment summary */
+.workspace-redesign .experiment-summary{margin:0 0 18px;padding:16px 18px;border:1px solid #d8e1ef;border-radius:12px;background:#f8faff}
+.workspace-redesign .experiment-summary-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.workspace-redesign .experiment-summary-heading h4{margin:5px 0 0;color:#172b4d;font-size:15px;font-weight:800}
+.workspace-redesign .experiment-summary-status{display:inline-flex;align-items:center;padding:5px 9px;border:1px solid #b7e4cc;border-radius:999px;background:#edfbf3;color:#17663b;font-size:11px;font-weight:750;white-space:nowrap}
+.workspace-redesign .experiment-summary-status.structural{border-color:#cbd5e1;background:#f1f5f9;color:#475569}
+.workspace-redesign .experiment-summary>p{margin:9px 0 12px;color:#526076;font-size:13px;line-height:1.6}
+.workspace-redesign .experiment-summary-runs,.workspace-redesign .experiment-summary-counts{display:flex;gap:8px 18px;flex-wrap:wrap;color:#526076;font-size:12px}
+.workspace-redesign .experiment-summary-runs b,.workspace-redesign .experiment-summary-counts b{color:#263750}
+@media(max-width:600px){.workspace-redesign .experiment-summary{padding:13px}.workspace-redesign .experiment-summary-heading{flex-direction:column;gap:9px}}
