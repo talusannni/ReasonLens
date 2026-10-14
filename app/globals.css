@@ -322,3 +322,10 @@ html,body{max-width:100%;overflow-x:hidden}button,input,textarea,select{max-widt
 .metric-direction.negative{color:#b4233d;background:#fff0f2}
 .metric-direction.neutral{color:#64748b;background:#f1f5f9}
 @media(prefers-reduced-motion:no-preference){.metric-direction{transition:background-color .15s ease,color .15s ease}}
+
+
+/* Explicit cross-mode experiment UI */
+.workspace-redesign .history-actions .experiment-active{background:#fff7ed;border-color:#fdba74;color:#9a3412;font-weight:750}
+.workspace-redesign .cross-mode-experiment-note{margin:16px 0;padding:15px 17px;border:1px solid #c7d7fe;border-left:4px solid #5276dc;border-radius:10px;background:#f5f8ff}
+.workspace-redesign .cross-mode-experiment-note strong{display:block;color:#1e3a8a;font-size:14px}
+.workspace-redesign .cross-mode-experiment-note p{margin:7px 0 0;color:#465b7a;font-size:13px;line-height:1.65}
