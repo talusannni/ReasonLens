@@ -2,46 +2,97 @@
 
 **See how AI reaches an answer.**
 
-ReasonLens is an open-source AI observability and debugging platform. It helps developers inspect recorded LLM workflows, follow retrieval evidence and tool execution, compare runs, and evaluate observable quality signals—without attempting to expose hidden model chain-of-thought.
+ReasonLens is an open-source AI observability and debugging platform. Inspect recorded chat, RAG, and agent workflows; follow retrieval evidence and tool execution; compare runs; and evaluate observable quality signals. ReasonLens does not expose or claim to reveal hidden model chain-of-thought.
 
-**Production:** https://reasonlens.vercel.app/  
-**Source:** https://github.com/talusannni/ReasonLens
+- **Live app:** https://reasonlens.vercel.app/
+- **Interactive demo:** https://reasonlens.vercel.app/demo
+- **Source code:** https://github.com/talusannni/ReasonLens
+- **Issues and bug reports:** https://github.com/talusannni/ReasonLens/issues
+- **License:** Apache-2.0
 
 ## What you can do
 
 - **Explore traces:** inspect structured execution graphs for chat, RAG, and agent workflows.
 - **Follow evidence and provenance:** review retrieval evidence, claims, decisions, tool calls, and recorded support relationships.
 - **Compare runs:** compare latency, token usage, estimated cost, supported/unsupported/contradicted claims, and captured evidence changes.
-- **Investigate regressions:** review provenance changes and experiment summaries. Mixed-mode comparisons are explicitly structural and do not score cross-mode quality as if it were comparable.
+- **Investigate regressions:** review provenance changes and experiment summaries. Mixed-mode comparisons are structural and do not score cross-mode quality as if it were comparable.
 - **Evaluate captured traces:** run datasets against stored traces, inspect per-case quality gates, and compare saved evaluation runs.
 - **Track experiment lineage:** group workflow variants, inspect parent/child relationships, and pin traces to evaluation cases.
 - **Instrument applications:** send traces through the ingestion API using the Python SDK or TypeScript SDK.
-- **Try it first:** use the public demo without configuring an LLM key.
 
 ReasonLens evaluates recorded, observable artifacts. A passing check is not independent proof that an answer is factually correct.
 
-## Quick start
+## Get running in minutes
 
-Requirements: Node.js and npm.
+### Requirements
+
+- Node.js 20 or newer (LTS recommended)
+- npm
+- Git
+
+### 1. Clone and install
 
 ```bash
 git clone https://github.com/talusannni/ReasonLens.git
 cd ReasonLens
 npm install
+```
+
+### 2. Start the app
+
+```bash
 npm run dev
 ```
 
-Open http://localhost:3000. Use the demo mode to explore sample traces. To execute real model requests locally, configure a supported provider and its credentials on the server.
+Open http://localhost:3000/demo to explore the interactive sample traces. The demo uses sample data and does not require a Groq API key or Supabase account.
 
-### Groq provider
+### 3. Run checks
+
+```bash
+npm test
+npm run build
+```
+
+If you only want to explore the product or contribute to trace-comparison logic, start with the demo and tests. You can do that before configuring hosted authentication or a real LLM provider.
+
+## Configure real model execution
+
+Copy the example environment file to `.env.local` and add your own values:
+
+```bash
+cp .env.example .env.local
+```
+
+For Groq, set the provider and model in `.env.local`:
 
 ```env
 REASONLENS_PROVIDER=groq
-REASONLENS_MODEL=<your-model>
-GROQ_API_KEY=<your-key>
+GROQ_API_KEY=your-groq-api-key
+GROQ_MODEL=openai/gpt-oss-120b
 ```
 
-Keep API keys on the server. Never commit credentials or expose them through client-side environment variables.
+Keep credentials server-side. Never commit `.env.local`, API keys, or secrets, and never expose them through `NEXT_PUBLIC_*` variables.
+
+## Run the authenticated workspace locally
+
+The public demo works without backend credentials. To run sign-in, workspace membership, persistent trace storage, and authenticated ingestion locally, configure a Supabase project.
+
+1. Create a Supabase project.
+2. Copy the URL, anon key, and service-role key from the project's API settings.
+3. Set the required values in `.env.local`:
+
+```env
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+REASONLENS_SESSION_SECRET=replace-with-a-long-random-secret
+REASONLENS_PROVIDER=mock
+```
+
+4. Apply the SQL migrations in `supabase/migrations/` to that project in filename order, using the Supabase SQL editor or your preferred migration workflow.
+5. Restart `npm run dev` and test sign-up/sign-in.
+
+Do not use production credentials for local development. Never share or commit the service-role key or session secret. Hosted auth and database-backed features cannot be fully exercised until Supabase is configured.
 
 ## Instrument an application
 
@@ -49,8 +100,8 @@ The hosted ingestion endpoint is `POST /api/traces`. Configure server-side Supab
 
 ```env
 SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=<server-only-key>
-REASONLENS_INGEST_KEY=<private-ingestion-key>
+SUPABASE_SERVICE_ROLE_KEY=your-server-only-key
+REASONLENS_INGEST_KEY=your-private-ingestion-key
 ```
 
 Trace ingestion authenticates the bearer key and scopes records to its workspace. API keys are stored as SHA-256 hashes; revoked keys are rejected. The service-role key must remain server-side.
@@ -115,7 +166,7 @@ The default target is https://reasonlens.vercel.app. Set `REASONLENS_BASE_URL` t
 
 The hosted app provides public landing/demo routes, account sign-in, and a protected workspace. Workspace membership and API-key sessions are validated server-side, and trace/evaluation access is workspace-scoped. API request limits use shared Supabase buckets and fail closed in production if the shared store is unavailable.
 
-ReasonLens is still an evolving project, not a claim of fully mature enterprise SaaS. Review deployment configuration and security controls before production use. Workspace key lifecycle UX, quotas and usage management, audit/retention controls, recovery processes, and a full independent security assessment are separate operational requirements. The live security integration suite is not a comprehensive penetration test.
+ReasonLens is an evolving project, not a claim of fully mature enterprise SaaS. Review deployment configuration and security controls before production use. Workspace key lifecycle UX, quotas and usage management, audit/retention controls, recovery processes, and a full independent security assessment are separate operational requirements. The live security integration suite is not a comprehensive penetration test.
 
 Relevant server-side environment variables can include:
 
@@ -126,11 +177,21 @@ Relevant server-side environment variables can include:
 - `GROQ_API_KEY` (server only, when using Groq)
 - `REASONLENS_INGEST_KEY` (server-side instrumentation credential)
 
-See the application and scripts for the exact variables required by each deployment mode.
+See `.env.example`, the application, and scripts for exact variables required by each deployment mode.
 
 ## Important boundary
 
 ReasonLens displays intentionally recorded execution artifacts—prompts, outputs, retrieval evidence, tool calls, claims, decisions, and their relationships. It does **not** expose or claim to reveal private model chain-of-thought.
+
+## Contributing
+
+1. Fork the repository and create a feature branch.
+2. Install dependencies with `npm install`.
+3. Start with the interactive demo and run `npm test`.
+4. Run `npm run build` before opening a pull request.
+5. Include tests for behavior changes and never commit secrets or real customer traces.
+
+For bugs or feature requests, [open a GitHub issue](https://github.com/talusannni/ReasonLens/issues).
 
 ## License
 
