@@ -31,7 +31,7 @@ export async function POST(req:Request){
   if(!workspaceId)return NextResponse.json({error:'Could not provision an active workspace for this account.'},{status:503});
   return setSession(NextResponse.json({ok:true,workspaceId},{headers:{'Cache-Control':'no-store'}}),workspaceId,identity.userId);
  }catch(e){
-  return NextResponse.json({error:e instanceof Error&&e.message==='Supabase Auth is not configured'?'Team authentication is not configured.':'Authentication service unavailable.'},{status:503});
+  return NextResponse.json({error:e instanceof Error&&e.message.startsWith('Supabase Auth is not configured')?'Team authentication is not configured.':'Authentication service unavailable.'},{status:503});
  }
 }
 
