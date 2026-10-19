@@ -7,6 +7,8 @@ ReasonLens is an open-source AI observability and debugging platform. It helps d
 **Production:** https://reasonlens.vercel.app/  
 **Source:** https://github.com/talusannni/ReasonLens
 
+> **New contributor?** Start with the [First-day Setup Guide](docs/SETUP.md) for local installation, Supabase configuration, environment variables, Groq setup, and tests.
+
 ## What you can do
 
 - **Explore traces:** inspect structured execution graphs for chat, RAG, and agent workflows.
@@ -22,7 +24,7 @@ ReasonLens evaluates recorded, observable artifacts. A passing check is not inde
 
 ## Quick start
 
-Requirements: Node.js and npm.
+Requirements: Node.js 20+ and npm.
 
 ```bash
 git clone https://github.com/talusannni/ReasonLens.git
@@ -31,17 +33,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000. Use the demo mode to explore sample traces. To execute real model requests locally, configure a supported provider and its credentials on the server.
-
-### Groq provider
-
-```env
-REASONLENS_PROVIDER=groq
-REASONLENS_MODEL=<your-model>
-GROQ_API_KEY=<your-key>
-```
-
-Keep API keys on the server. Never commit credentials or expose them through client-side environment variables.
+Open http://localhost:3000. Use the public demo to explore sample traces. For the complete Supabase setup required for sign-in, workspace features, and persisted traces, follow the [First-day Setup Guide](docs/SETUP.md).
 
 ## Instrument an application
 
@@ -103,7 +95,7 @@ npm test
 npm run build
 ```
 
-The test scripts cover provenance, quality gates, evaluations, evidence diff, trace execution and comparison, evaluation regression, experiment analysis, API security, security integrity, and tenant isolation. For the non-destructive production health check:
+For the non-destructive production health check:
 
 ```bash
 npm run smoke:production
@@ -117,16 +109,7 @@ The hosted app provides public landing/demo routes, account sign-in, and a prote
 
 ReasonLens is still an evolving project, not a claim of fully mature enterprise SaaS. Review deployment configuration and security controls before production use. Workspace key lifecycle UX, quotas and usage management, audit/retention controls, recovery processes, and a full independent security assessment are separate operational requirements. The live security integration suite is not a comprehensive penetration test.
 
-Relevant server-side environment variables can include:
-
-- `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY` (server only)
-- `REASONLENS_SESSION_SECRET` (server only)
-- `GROQ_API_KEY` (server only, when using Groq)
-- `REASONLENS_INGEST_KEY` (server-side instrumentation credential)
-
-See the application and scripts for the exact variables required by each deployment mode.
+For live security test setup and cleanup details, see [Security Testing](docs/SECURITY_TESTING.md).
 
 ## Important boundary
 
