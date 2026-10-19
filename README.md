@@ -2,35 +2,38 @@
 
 **See how AI reaches an answer.**
 
-ReasonLens is a model-agnostic, local-first visual debugger for AI systems. It focuses on observable, externally explainable execution artifacts rather than private chain-of-thought.
+ReasonLens is an open-source AI observability and debugging platform. It helps developers inspect recorded LLM workflows, follow retrieval evidence and tool execution, compare runs, and evaluate observable quality signals—without attempting to expose hidden model chain-of-thought.
 
-## What works now
+**Production:** https://reasonlens.vercel.app/  
+**Source:** https://github.com/talusannni/ReasonLens
 
-- Workspace with chat, RAG and agent trace modes
-- Interactive execution graph
-- Evidence and retrieval nodes for RAG workflows
-- Tool-call nodes for agent workflows
-- Claims, decisions and answer relationships
-- Node inspector with metadata
-- Trace metrics: latency and token counts
-- Local browser trace history
-- Search trace history
-- Import/export trace JSON
-- Zero-key demo engine
-- Groq API provider
-- Responsive desktop/mobile UI
-- GitHub Actions typecheck/build validation
+## What you can do
 
-## Run
+- **Explore traces:** inspect structured execution graphs for chat, RAG, and agent workflows.
+- **Follow evidence and provenance:** review retrieval evidence, claims, decisions, tool calls, and recorded support relationships.
+- **Compare runs:** compare latency, token usage, estimated cost, supported/unsupported/contradicted claims, and captured evidence changes.
+- **Investigate regressions:** review provenance changes and experiment summaries. Mixed-mode comparisons are explicitly structural and do not score cross-mode quality as if it were comparable.
+- **Evaluate captured traces:** run datasets against stored traces, inspect per-case quality gates, and compare saved evaluation runs.
+- **Track experiment lineage:** group workflow variants, inspect parent/child relationships, and pin traces to evaluation cases.
+- **Instrument applications:** send traces through the ingestion API using the Python SDK or TypeScript SDK.
+- **Try it first:** use the public demo without configuring an LLM key.
+
+ReasonLens evaluates recorded, observable artifacts. A passing check is not independent proof that an answer is factually correct.
+
+## Quick start
+
+Requirements: Node.js and npm.
 
 ```bash
+git clone https://github.com/talusannni/ReasonLens.git
+cd ReasonLens
 npm install
 npm run dev
 ```
 
-Open http://localhost:3000.
+Open http://localhost:3000. Use the demo mode to explore sample traces. To execute real model requests locally, configure a supported provider and its credentials on the server.
 
-For the demo engine, no API key is required. For Groq configure:
+### Groq provider
 
 ```env
 REASONLENS_PROVIDER=groq
@@ -38,10 +41,11 @@ REASONLENS_MODEL=<your-model>
 GROQ_API_KEY=<your-key>
 ```
 
+Keep API keys on the server. Never commit credentials or expose them through client-side environment variables.
 
-## Real application instrumentation
+## Instrument an application
 
-ReasonLens can ingest traces from an external AI application through `POST /api/traces`. Configure these server environment variables:
+The hosted ingestion endpoint is `POST /api/traces`. Configure server-side Supabase credentials and a workspace ingestion key:
 
 ```env
 SUPABASE_URL=https://your-project.supabase.co
@@ -49,24 +53,28 @@ SUPABASE_SERVICE_ROLE_KEY=<server-only-key>
 REASONLENS_INGEST_KEY=<private-ingestion-key>
 ```
 
-The ingestion API stores traces in Supabase and rejects requests without the ingestion key.
+Trace ingestion authenticates the bearer key and scopes records to its workspace. API keys are stored as SHA-256 hashes; revoked keys are rejected. The service-role key must remain server-side.
 
 ### Python SDK
 
-See `sdk/python`. It supports LLM, retrieval, tool, claim, decision and answer events and posts completed traces to ReasonLens.
+See [`sdk/python`](sdk/python) for instrumentation examples covering LLM, retrieval, tool, claim, decision, and answer events.
 
 ### TypeScript SDK
 
-See `sdk/typescript/reasonlens.ts`. It provides the same core instrumentation primitives without adding a runtime dependency.
-
-Example:
+See [`sdk/typescript/reasonlens.ts`](sdk/typescript/reasonlens.ts) for dependency-light TypeScript instrumentation.
 
 ```ts
 import { ReasonLens } from './reasonlens';
 
-const rl = new ReasonLens('https://reasonlens.vercel.app', process.env.REASONLENS_INGEST_KEY);
+const rl = new ReasonLens(
+  'https://reasonlens.vercel.app',
+  process.env.REASONLENS_INGEST_KEY
+);
+
 const trace = rl.trace('Answer a customer question', 'agent');
-const evidence = trace.retrieval('refund policy', [{ title: 'Refund policy', content: 'Refunds are allowed within 30 days.' }]);
+const evidence = trace.retrieval('refund policy', [
+  { title: 'Refund policy', content: 'Refunds are allowed within 30 days.' }
+]);
 trace.tool('get_order', { id: '123' }, { status: 'delivered' });
 trace.claim('Order is eligible for refund', [evidence]);
 trace.decision('Approve refund');
@@ -74,255 +82,56 @@ trace.answer('The order is eligible for a refund.');
 await trace.finish();
 ```
 
-## Architecture
+Use an ingestion key issued for your workspace. Never put a service-role key, session secret, or ingestion credential in client-side code or source control.
 
-```text
-User prompt
-    |
-    v
-Trace API
-    |
-    +--> Provider adapter --> Structured trace
-    |
-    +--> Demo scenarios (chat / RAG / agent)
-                              |
-                              v
-                     ReasonLens graph
-                              |
-              +---------------+---------------+
-              |               |               |
-           evidence        tools          decisions
-              |               |               |
-              +---------------+---------------+
-                              |
-                              v
-                         Final answer
-```
+## Evaluation and quality gates
 
-## Workspace-scoped trace storage
+Quality checks depend on trace mode:
 
-Trace and evaluation rows are assigned to a workspace. Existing records remain in the stable `default` workspace. The external `/api/traces` endpoints resolve bearer credentials to a workspace and constrain reads/writes to that workspace; API keys are stored as SHA-256 hashes, and revoked keys are rejected.
+- **Chat:** does not fail provenance checks solely because no retrieval evidence was recorded.
+- **RAG:** evaluates recorded evidence and provenance against configured thresholds.
+- **Agent:** checks recorded execution outcomes and answer links to tools or decisions; provenance applies when appropriate support relationships are recorded.
+- **Retrieval-only runs:** useful for comparing retrieved chunks and prepared context, but excluded from answer-quality evaluation because no new answer was generated.
+- **Cross-mode comparisons:** clearly marked as structural; provenance and quality comparisons are not treated as directly comparable.
 
-Operators can provision a workspace and one initial API key from a trusted shell with server-side Supabase credentials:
+Evaluation datasets can pin cases to trace IDs. Saved evaluation runs report pass/warn/fail status, missing cases, per-case checks, and baseline-versus-current regressions. Regression thresholds are configurable; latency and cost increases can be warnings.
+
+Run the automated checks locally:
 
 ```bash
-SUPABASE_URL=https://your-project.supabase.co \
-SUPABASE_SERVICE_ROLE_KEY=<server-only-key> \
-npm run workspace:create-key -- --slug acme-team --name "Acme Team"
+npm test
+npm run build
 ```
 
-The generated key is printed once. Store it securely and send it as `Authorization: Bearer <key>` to the trace ingestion API. Never commit the generated key or service-role credential.
-
-Dashboard sign-in accepts the same workspace API key and issues a signed, HTTP-only session scoped to that workspace. Sessions have a server-validated seven-day expiry. Previously issued dashboard cookies without a verifiable expiry are rejected; sign in again after deployment. This is still an incremental multi-workspace foundation, not a complete hosted SaaS: key-management UI, rate limits/quotas, workspace administration, audit/retention controls, and end-to-end tenant-isolation tests remain release requirements.
-
-## Important boundary
-
-ReasonLens does not attempt to expose hidden model chain-of-thought. It displays structured traces, evidence, tool execution, claims and decisions that can be intentionally produced and reviewed.
-
-## Roadmap
-
-- SDK for instrumenting applications
-- OpenTelemetry trace ingestion
-- Live streaming traces
-- Real RAG connector ingestion
-- Agent framework adapters
-- Unsupported-claim and evidence-coverage evaluation
-- Model comparison and regression evaluation
-- Quality gates for provenance, contradictions, unsupported claims, latency and cost
-- Persistent multi-user trace storage
-
-## Production safety checks
-
-The public health endpoint is `GET /api/health`. It reports service liveness only and does not expose environment-variable or database credentials.
-
-Before shipping a deployment, run the non-destructive smoke suite:
+The test scripts cover provenance, quality gates, evaluations, evidence diff, trace execution and comparison, evaluation regression, experiment analysis, API security, security integrity, and tenant isolation. For the non-destructive production health check:
 
 ```bash
 npm run smoke:production
 ```
 
-By default it checks `https://reasonlens.vercel.app`. To check a staging or self-hosted deployment, set `REASONLENS_BASE_URL` to that base URL. The smoke suite does not create or mutate traces. If Vercel Deployment Protection is enabled, add a GitHub Actions secret named `VERCEL_AUTOMATION_BYPASS_SECRET` containing the project's automation-bypass secret so the scheduled workflow can reach the health endpoint.
+The default target is https://reasonlens.vercel.app. Set `REASONLENS_BASE_URL` to check another deployment.
 
-The API rejects oversized JSON payloads, validates trace shape and numeric metrics, and returns client errors for malformed requests. In production, the hosted Groq execution path requires an authenticated ReasonLens dashboard session; the no-key demo path remains available. Keep `SUPABASE_SERVICE_ROLE_KEY`, `GROQ_API_KEY`, and `REASONLENS_INGEST_KEY` server-side only.
+## Hosted workspace and security boundaries
 
-Run the local request-guard tests with:
+The hosted app provides public landing/demo routes, account sign-in, and a protected workspace. Workspace membership and API-key sessions are validated server-side, and trace/evaluation access is workspace-scoped. API request limits use shared Supabase buckets and fail closed in production if the shared store is unavailable.
 
-```bash
-npm run test:api-security
-```
+ReasonLens is still an evolving project, not a claim of fully mature enterprise SaaS. Review deployment configuration and security controls before production use. Workspace key lifecycle UX, quotas and usage management, audit/retention controls, recovery processes, and a full independent security assessment are separate operational requirements. The live security integration suite is not a comprehensive penetration test.
 
-The trace and evaluation APIs apply workspace scoping and support per-workspace bearer credentials. API requests are rate-limited using shared, atomic Supabase buckets (public demo execution: 10/minute per source IP; authenticated execution: 30/minute per workspace; trace ingestion: 120/minute per workspace; evaluation runs: 10/minute per workspace; dashboard reads and login have separate limits). Limits return HTTP 429 with retry metadata. The limiter fails closed in production if its shared store is unavailable.
+Relevant server-side environment variables can include:
 
-Dashboard-authenticated users can delete individual traces at `DELETE /api/dashboard/traces/{traceId}` and evaluation runs at `DELETE /api/evaluations/{runId}`. Both operations are constrained to the authenticated workspace. Automated age-based retention is not enabled by default; configure and validate a retention policy before enabling scheduled deletion.
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` (server only)
+- `REASONLENS_SESSION_SECRET` (server only)
+- `GROQ_API_KEY` (server only, when using Groq)
+- `REASONLENS_INGEST_KEY` (server-side instrumentation credential)
 
-Run the tenant boundary regression suite with `npm run test:tenant-isolation`. It checks that trace and evaluation reads always include the workspace filter and that cross-workspace IDs do not return data. Do not market the deployment as fully production-ready multi-tenant SaaS until live cross-workspace tests, API-key lifecycle controls, quotas, retention/recovery, and the self-hosting audit are complete.
+See the application and scripts for the exact variables required by each deployment mode.
 
-## Quality gate checks
+## Important boundary
 
-Run the deterministic quality-gate test suite:
-
-```powershell
-npm run test:quality-gates
-```
-
-Quality gates are trace-mode aware. RAG traces are subject to the default **80/100 provenance** threshold, answer-provenance requirement and contradiction checks. Chat traces without explicit evidence skip evidence-provenance gates rather than failing for having no retrieval data. Agent traces must connect the final answer to a recorded tool or decision; provenance gates apply when explicit evidence or tool-to-claim support links are recorded. Unsupported claims, provenance drops, latency and estimated cost can produce warnings when their checks apply. A passing structural/operational report does not independently prove factual correctness.
-
-## Evaluation benchmark
-
-ReasonLens includes a model-agnostic evaluation runner that evaluates captured traces against the Core RAG Quality Suite.
-
-Open **Evaluations** in the dashboard and choose **Run evaluation**. The benchmark evaluates the traces already stored in ReasonLens; missing cases are explicitly reported and never counted as passes.
-
-A dataset can pin a case to a specific trace with `traceId` when multiple traces share the same prompt:
-
-```json
-[{"id":"sla-baseline","name":"SLA baseline","prompt":"Is premium support availability 99.9% monthly?","traceId":"<trace-id>"}]
-```
-
-The benchmark reports:
-- pass/warn/fail rate
-- average provenance score
-- evaluated vs missing cases
-- average latency and total cost
-- per-case quality-gate status
-- regression comparison between two evaluation runs
-
-Run the deterministic test suite locally:
-
-```powershell
-npm run test:evaluation
-```
-
-This evaluates observable artifacts only. It does not inspect or request private model chain-of-thought.
-
-## Replay and evidence debugging
-
-The **Run comparison** view includes an **Evidence diff** panel for two captured traces. It identifies evidence chunks added, removed, or changed, compares rank and retrieval score, and displays the captured LLM request messages when the instrumentation stored them. This comparison does not itself execute the retriever.
-
-To run the bundled PDF/DOCX RAG example again **without calling Groq**, use retrieval-only mode. It repeats document parsing, lexical retrieval, and context assembly, stores a new trace, and records that the LLM was intentionally skipped:
-
-```powershell
-$env:PYTHONPATH="sdk/python"
-$env:REASONLENS_URL="https://reasonlens.vercel.app"
-$env:REASONLENS_INGEST_KEY="<your existing ReasonLens ingest key>"
-# Generate sample files only if either fixture is missing.
-if (!(Test-Path "sdk/python/examples/data/documents/travel_policy_2026.pdf") -or !(Test-Path "sdk/python/examples/data/documents/expense_policy.docx")) {
-  python sdk/python/examples/generate_document_fixtures.py
-}
-python sdk/python/examples/document_rag.py --retrieval-only --top-k 2
-python sdk/python/examples/document_rag.py --retrieval-only --top-k 4
-```
-
-For a repeatable batch, run the experiment orchestrator once. It creates a retrieval-only trace for each top-k value, by default 2 and 4:
-
-```powershell
-python sdk/python/examples/run_retrieval_experiments.py
-```
-
-You can choose other positive values, for example:
-
-```powershell
-python sdk/python/examples/run_retrieval_experiments.py --top-k-values 2,4,6
-```
-
-The batch does not call Groq by default. To run a full Groq-backed answer for **one selected configuration** while keeping all other configurations retrieval-only, opt in explicitly:
-
-```powershell
-python sdk/python/examples/run_retrieval_experiments.py --top-k-values 2,4,6 --full-run-top-k 4
-```
-
-That command makes exactly one full-run attempt at top-k 4; top-k 2 and 6 remain retrieval-only. Set `GROQ_API_KEY` only for this opt-in full run. Each configuration produces its own trace for comparison.
-
-Open **Trace history**, select the two newly created traces, and open **Run comparison**. The Evidence diff panel shows which chunks changed between the two retrieval settings. No `GROQ_API_KEY` is needed for retrieval-only mode. The fixture generator writes local sample documents and can overwrite existing fixture files, so run it only when the sample files are missing.
-
-A full end-to-end run uses the same example and current top-k setting but makes a real Groq request:
-
-```powershell
-python sdk/python/examples/document_rag.py --top-k 4
-```
-
-For full mode, set both `GROQ_API_KEY` and `REASONLENS_INGEST_KEY`. This example uses a deterministic lexical retriever over its bundled PDF/DOCX fixtures; it is a working reference harness, not an automatic runner for an arbitrary external vector database. To replay a customer's own pipeline, instrument and invoke that application's retrieval function.
-
-## Experiment grouping and automatic regression analysis
-
-Every trace has a workflow ID. Variant runs inherit the same workflow ID and use it as a stable experiment-group ID, so sibling variants created from the root or another variant stay together. The dashboard's **Experiment regression gate** automatically compares each variant against the workflow baseline.
-
-The gate checks:
-- Run-status regressions (fail)
-- Provenance-score drops greater than 5 points (fail)
-- Latency increases greater than 25% (warn)
-- Estimated-cost increases greater than 25% (warn)
-
-Retrieval-only traces are explicitly excluded from answer-provenance scoring. The analysis uses captured observable artifacts, not hidden model reasoning. These alerts are dashboard warnings/gates, not email or webhook notifications.
-
-Run the deterministic experiment-analysis tests:
-
-```powershell
-npm run test:experiment-analysis
-```
-
-The migration `supabase/migrations/202610090002_normalize_experiment_groups.sql` normalizes existing variants so each workflow shares one experiment ID. It has been applied to the production Supabase project; the migration remains in source control for reproducibility.
+ReasonLens displays intentionally recorded execution artifacts—prompts, outputs, retrieval evidence, tool calls, claims, decisions, and their relationships. It does **not** expose or claim to reveal private model chain-of-thought.
 
 ## License
 
 Apache-2.0.
-
-
-## Provenance regression demo
-
-Create two real traces—a supported baseline and a deliberately degraded RAG run:
-
-```powershell
-$env:PYTHONPATH="sdk/python"
-python sdk/python/examples/provenance_regression_demo.py
-```
-
-Then open **Trace history**, select the two newest traces with **Compare**, and inspect **RAG Regression Analysis**. ReasonLens should identify the supported → contradicted transition and the provenance score drop.
-
-
-## Evaluation regression gates
-
-ReasonLens can compare two saved evaluation runs and report whether the current run regressed against a baseline. In the dashboard, open **Evaluations**, select the baseline run first and the current run second, then review the **Baseline vs current regression gate** report. Export either run as JSON from the evaluation history to use the same gate in a release script or CI job.
-
-Default policy:
-- Fail if evaluation pass rate drops at all.
-- Fail if average provenance score drops by more than 5 points.
-- Fail if any matched case degrades in status.
-- Fail if the current run has missing evaluation cases.
-- Warn if average latency or total estimated cost rises by more than 25%.
-
-Run the gate locally after exporting both JSON files:
-
-```powershell
-npx tsx scripts/check-evaluation-regression.ts .\baseline.json .\current.json
-```
-
-Exit codes: `0` means PASS or WARN; `1` means a blocking regression; `2` means invalid input or an execution error. Thresholds can be adjusted with environment variables:
-
-```powershell
-$env:REASONLENS_MAX_PASS_RATE_DROP="0"
-$env:REASONLENS_MAX_PROVENANCE_DROP="5"
-$env:REASONLENS_MAX_LATENCY_INCREASE_PERCENT="25"
-$env:REASONLENS_MAX_COST_INCREASE_PERCENT="25"
-npx tsx scripts/check-evaluation-regression.ts .\baseline.json .\current.json
-```
-
-The gate compares captured evaluation results; it does not invoke a model or rerun the application. A release pipeline should create the current evaluation run first, export or fetch the stored baseline/current JSON, then execute this command and treat exit code 1 as a release blocker. Latency and cost thresholds are warnings by default.
-
-
-## Trace lineage and experiment runs
-
-Each execution is stored as a separate trace. The dashboard can link a new run to a parent trace using **Run variant from this trace**; change the prompt or settings before executing to create an experiment branch. The trace history labels the workflow root or variant, and the workspace lineage panel shows sibling runs, parent IDs, configuration fingerprints, and quick actions to open, compare, branch, or pin a trace into the evaluation dataset.
-
-Lineage metadata is stored in `workflow_id`, `parent_trace_id`, `experiment_id`, and `config_fingerprint` on `public.reasonlens_traces`. Existing traces are backfilled as workflow roots by the migration `supabase/migrations/202610090001_add_trace_lineage.sql`. The deployed Supabase project has this migration applied.
-
-- **Compare** selects lineage traces for the existing run comparison view.
-- **Evaluate** pins a trace to the evaluation dataset; pinned trace IDs are fetched directly so older traces are not missed by the default history window.
-- A configuration fingerprint is a compact hash of prompt, provider, model, and mode. It identifies an input/config change; it is not a semantic equivalence guarantee.
-
-
-## Public site and account workspace
-
-The public landing page is served at `/`, with an illustrative static product tour at `/demo`. Account sign-in and signup are available at `/login`; the authenticated trace workspace is at `/workspace`. Account auth uses Supabase Auth and workspace membership. Configure `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, and a dedicated `REASONLENS_SESSION_SECRET` in the deployment environment. Do not use the service-role key or session secret in client-side variables.
-
-The team-session resolver checks the signed session, active workspace, and current membership on each protected request. Existing workspace API-key sessions remain supported. Account login and signup are rate-limited through the shared Supabase rate-limit store.
