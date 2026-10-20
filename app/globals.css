@@ -341,3 +341,11 @@ html,body{max-width:100%;overflow-x:hidden}button,input,textarea,select{max-widt
 .workspace-redesign .experiment-summary-runs,.workspace-redesign .experiment-summary-counts{display:flex;gap:8px 18px;flex-wrap:wrap;color:#526076;font-size:12px}
 .workspace-redesign .experiment-summary-runs b,.workspace-redesign .experiment-summary-counts b{color:#263750}
 @media(max-width:600px){.workspace-redesign .experiment-summary{padding:13px}.workspace-redesign .experiment-summary-heading{flex-direction:column;gap:9px}}
+
+
+/* Footer links: keep actions separated and readable on all screen sizes */
+.marketing-footer-links{display:flex;align-items:center;justify-content:flex-end;gap:10px 18px;flex-wrap:wrap;min-width:0}
+.marketing-footer-links a{display:inline-block;color:#526076;text-decoration:underline;text-underline-offset:3px;font-size:12px;line-height:1.6;overflow-wrap:anywhere}
+.marketing-footer-links a:hover{color:#3168f5}
+@media(max-width:900px){.marketing-footer{flex-wrap:wrap}.marketing-footer-links{justify-content:flex-start;width:100%}}
+@media(max-width:600px){.marketing-footer-links{gap:10px 16px}}
